@@ -97,6 +97,8 @@ Statuswerte fuer `downloads.processed` und `videos.processed` sind in `docs/STAT
 
 Security-Hardening fuer URL-Allowlist, Download-Limits, Pfadvalidierung und Log-Scrubbing ist in `docs/SECURITY_HARDENING.md` dokumentiert.
 
+Der konservative Framework-Upgradepfad ist in `docs/FRAMEWORK_UPGRADE_STAGE_1.md` dokumentiert. Stage 1 haelt die Laravel-7/PHP-7.4-Baseline fest und prueft sie in CI, bevor ein separater Dependency-Resolve auf Laravel 8 erfolgt.
+
 ## Offene Punkte fuer Folge-PRs
 
 - Spaeter: non-root UID/GID gegen echte Host-/NFS-Mounts validieren.

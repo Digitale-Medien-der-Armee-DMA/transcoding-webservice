@@ -1,7 +1,7 @@
 COMPOSE ?= docker compose
 COMPOSE_FILE ?= compose.yaml
 
-.PHONY: build up down logs ps pull restart shell worker-shell migrate test compose-validate ffmpeg-cpu-smoke ffmpeg-gpu-smoke dev-up dev-down dev-logs
+.PHONY: build up down logs ps pull restart shell worker-shell migrate test framework-stage1-check compose-validate ffmpeg-cpu-smoke ffmpeg-gpu-smoke dev-up dev-down dev-logs
 
 build:
 	$(COMPOSE) -f $(COMPOSE_FILE) build
@@ -35,6 +35,9 @@ migrate:
 
 test:
 	vendor/bin/phpunit tests/Feature/VimpContractTest.php tests/Feature/HealthMetricsTest.php tests/Feature/WorkerGuardrailsTest.php tests/Feature/StatusSchemaTest.php tests/Feature/SecurityHardeningTest.php
+
+framework-stage1-check:
+	php scripts/upgrade/framework_stage1_check.php
 
 compose-validate:
 	$(COMPOSE) --env-file .env.example -f compose.yaml config >/dev/null
