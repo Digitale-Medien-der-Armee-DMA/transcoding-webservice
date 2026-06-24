@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Download;
 use App\Models\User;
+use App\Services\Security\MediaPathGuard;
+use App\Services\Security\SourceUrlPolicy;
 
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -21,6 +23,7 @@ class DownloadController extends Controller
     {
         Log::debug("Entering " . __METHOD__);
         $data = $request->all();
+        $user = Auth::guard('api')->user();
 
         $rules = [
             'mediakey' => ['required', 'unique:downloads', 'alpha_num', 'min:32', 'max:32'],
@@ -37,16 +40,25 @@ class DownloadController extends Controller
             'target.format.*.default' => 'boolean'
         ];
 
-        $url = User::where('id', '=', Auth::guard('api')->user()->id)->pluck('url')->first() . $data['source']['url'];
+        $userBaseUrl = User::where('id', '=', $user->id)->pluck('url')->first();
+        $url = $userBaseUrl . $data['source']['url'];
         $data['source']['url'] = $url;
 
         $request->merge($data);
         $validator = Validator::make($data, $rules);
 
+        if (!$validator->fails() && !app(SourceUrlPolicy::class)->allows($url, $userBaseUrl)) {
+            Log::debug("Exiting " . __METHOD__);
+            return response()->json([
+                'message' => ['Source URL is not allowed'],
+                'status' => 'failed'
+            ])->setStatusCode(400);
+        }
+
         if (!$validator->fails()) {
             $request->offsetUnset('api_token');
             $download = Download::create([
-                'user_id' => Auth::guard('api')->user()->id,
+                'user_id' => $user->id,
                 'mediakey' => $request->json()->get('mediakey'),
                 'processed' => Download::UNPROCESSED,
                 'payload' => $request->json()->all()
@@ -78,6 +90,7 @@ class DownloadController extends Controller
             $files_to_delete[] = $filename->mediakey;
         }
 
+        $files_to_delete = app(MediaPathGuard::class)->filterSafeRelativePaths($files_to_delete);
         Storage::disk('uploaded')->delete($files_to_delete);
         Log::debug("Exiting " . __METHOD__);
     }

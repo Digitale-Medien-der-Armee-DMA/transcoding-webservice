@@ -95,6 +95,8 @@ Worker-Guardrails sind in `docs/WORKER_GUARDRAILS.md` dokumentiert. Wichtig fuer
 
 Statuswerte fuer `downloads.processed` und `videos.processed` sind in `docs/STATUS_SCHEMA.md` dokumentiert. `processed` ist aus Kompatibilitaetsgruenden weiterhin der Spaltenname, aber fachlich ein Integer-Statusfeld.
 
+Security-Hardening fuer URL-Allowlist, Download-Limits, Pfadvalidierung und Log-Scrubbing ist in `docs/SECURITY_HARDENING.md` dokumentiert.
+
 ## Offene Punkte fuer Folge-PRs
 
 - Spaeter: non-root UID/GID gegen echte Host-/NFS-Mounts validieren.

@@ -6,6 +6,8 @@ use App\Jobs\ConvertVideoJob;
 use App\Models\Download;
 use App\Models\DownloadJob;
 use App\Models\Video;
+use App\Services\Security\MediaPathGuard;
+use App\Services\Security\SourceUrlPolicy;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use GuzzleHttp\RequestOptions;
@@ -25,6 +27,7 @@ class VideoController extends Controller
     {
         Log::debug("Entering " . __METHOD__);
         $filenames = DB::table('videos')->select('file')->whereIn('id', explode(',', $id))->pluck('file')->toArray();
+        $filenames = app(MediaPathGuard::class)->filterSafeRelativePaths($filenames);
         Storage::disk('converted')->delete($filenames);
         Log::debug("Exiting " . __METHOD__);
     }
@@ -32,13 +35,17 @@ class VideoController extends Controller
     public function getFile($filename)
     {
         Log::debug("Entering " . __METHOD__);
-        $file = Storage::disk('converted')->path($filename);
+        if (!app(MediaPathGuard::class)->isSafeRelativePath($filename)) {
+            Log::debug("Exiting " . __METHOD__);
+            return response()->json(['message' => 'File not found'])->setStatusCode(404);
+        }
 
         Log::info('Plugin tries to download ' . $filename . ' with user id ' . Auth::guard('api')->user()->id);
         //$uid = DB::table('videos')->where('file','=', $filename)->pluck('user_id')->first();
 
         try {
             Video::where('file', '=', $filename)->where('user_id', '=', Auth::guard('api')->user()->id)->firstOrFail();
+            $file = Storage::disk('converted')->path($filename);
             if (file_exists($file)) {
                 Log::debug("Exiting " . __METHOD__);
                 return response()->download($file, null, [], null);
@@ -56,11 +63,21 @@ class VideoController extends Controller
     public function setDownloadFinished($filename)
     {
         Log::debug("Entering " . __METHOD__);
+        if (!app(MediaPathGuard::class)->isSafeRelativePath($filename)) {
+            Log::debug("Exiting " . __METHOD__);
+            return response()->json(['message' => 'File not found'])->setStatusCode(404);
+        }
+
         Log::info('Plugin tries to set file ' . $filename . ' with user id ' . Auth::guard('api')->user()->id . ' to finished state');
 
-        $video = Video::where('file', '=', $filename);
+        $video = Video::where('file', '=', $filename)->where('user_id', '=', Auth::guard('api')->user()->id);
+        if ($video->count() === 0) {
+            Log::debug("Exiting " . __METHOD__);
+            return response()->json(['message' => 'File not found'])->setStatusCode(404);
+        }
+
         $video->update(['downloaded_at' => Carbon::now()]);
-        Log::info('Video ' . $video->pluck('file') . ' was set to finished state');
+        Log::info('Video ' . $filename . ' was set to finished state');
         Log::debug("Exiting " . __METHOD__);
         return response()->json(['message' => 'ok'])->setStatusCode(200);
     }
@@ -69,8 +86,16 @@ class VideoController extends Controller
     {
         Log::debug("Entering " . __METHOD__);
         Log::info('Delete all files and DB entries for mediakey ' . $mediakey);
+        $pathGuard = app(MediaPathGuard::class);
+
+        if (!$pathGuard->isValidMediaKey($mediakey)) {
+            Log::debug("Exiting " . __METHOD__);
+            return response()->json('Not found')->setStatusCode(404);
+        }
+
         if (!empty($mediakey)) {
             $filenames = DB::table('videos')->select('file')->whereIn('mediakey', explode(',', $mediakey))->pluck('file')->toArray();
+            $filenames = $pathGuard->filterSafeRelativePaths($filenames);
 
             $deleteVideo = Video::where('mediakey', $mediakey)->get();
             DownloadJob::where('download_id', '=', $deleteVideo->first()->download_id)->delete();
@@ -81,14 +106,16 @@ class VideoController extends Controller
                 }
                 if(isset($video->target['label'], $video->target['extension'])) {
                     $dir = $video->path . '_' . $video->target['label'] . '_' . $video->target['extension'];
-                    if (Storage::disk('converted')->exists($dir)) {
+                    if ($pathGuard->isSafeRelativePath($dir) && Storage::disk('converted')->exists($dir)) {
                         Storage::disk('converted')->deleteDirectory($dir);
                     }
                 }
                 $video->delete();
             }
             Storage::disk('converted')->delete($filenames);
-            Storage::disk('uploaded')->delete($mediakey);
+            if ($pathGuard->isSafeRelativePath($mediakey)) {
+                Storage::disk('uploaded')->delete($mediakey);
+            }
         }
         Log::debug("Exiting " . __METHOD__);
     }
@@ -123,8 +150,15 @@ class VideoController extends Controller
         $api_token = $request->input('api_token', false);
         $url = $request->input('url', false);
         if ($api_token && $url) {
+            if (!app(SourceUrlPolicy::class)->allows($url)) {
+                Log::debug("Exiting " . __METHOD__);
+                return response()->json(['message' => 'URL is not allowed'])->setStatusCode(400);
+            }
+
             $guzzle = new Client();
             $requestOptions = array(
+                RequestOptions::CONNECT_TIMEOUT => (int) config('security.downloads.connect_timeout_seconds', 10),
+                RequestOptions::TIMEOUT => (int) config('security.downloads.timeout_seconds', 300),
                 RequestOptions::JSON => [
                     'api_token' => $api_token,
                 ]);
