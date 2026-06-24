@@ -24,7 +24,7 @@ $expectedLockedPackages = [
     'guzzlehttp/guzzle' => '7.12.3',
     'laravel/legacy-factories' => 'v1.4.2',
     'php-ffmpeg/php-ffmpeg' => 'v0.16',
-    'phpunit/phpunit' => '9.5.4',
+    'phpunit/phpunit' => '9.6.34',
 ];
 
 $errors = [];
