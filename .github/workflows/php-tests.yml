@@ -16,7 +16,19 @@ jobs:
       - name: Validate Compose files
         run: |
           docker compose --env-file .env.example -f compose.yaml config >/tmp/compose-production.yaml
+          docker compose --profile smoke --profile gpu-smoke --env-file .env.example -f compose.yaml config >/tmp/compose-smoke.yaml
           docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml config >/tmp/compose-dev.yaml
+
+      - name: Validate smoke scripts
+        run: |
+          sh -n docker/production/ffmpeg-smoke.sh
+          sh -n scripts/smoke/ffmpeg-cpu-smoke.sh
+          sh -n scripts/smoke/ffmpeg-gpu-smoke.sh
+
+      - name: Run FFmpeg CPU smoke
+        run: |
+          docker compose --profile smoke --env-file .env.example -f compose.yaml build ffmpeg-smoke-cpu
+          docker compose --profile smoke --env-file .env.example -f compose.yaml run --rm -T ffmpeg-smoke-cpu
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
