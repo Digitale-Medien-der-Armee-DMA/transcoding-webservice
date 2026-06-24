@@ -27,6 +27,11 @@ class HealthMetricsTest extends TestCase
             'health.redis_required' => false,
             'health.worker_stale_after_seconds' => 300,
             'health.queue_names' => ['download', 'video', 'default'],
+            'workers.heartbeat.enabled' => true,
+            'workers.gpu_guard.enabled' => false,
+            'workers.gpu_guard.min_free_mb' => 12288,
+            'workers.gpu_guard.retry_delay_seconds' => 60,
+            'workers.gpu_guard.fail_open' => false,
         ]);
     }
 
@@ -192,6 +197,13 @@ class HealthMetricsTest extends TestCase
                     'total' => 2,
                     'stale' => 1,
                     'stale_after_seconds' => 300,
+                    'heartbeat_enabled' => true,
+                    'gpu_guard' => [
+                        'enabled' => false,
+                        'min_free_mb' => 12288,
+                        'retry_delay_seconds' => 60,
+                        'fail_open' => false,
+                    ],
                 ],
                 'transcoding' => [
                     'running_jobs' => 0,
