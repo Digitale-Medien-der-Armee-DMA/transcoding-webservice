@@ -108,12 +108,23 @@ class VimpContractTest extends TestCase
         $response->assertOk();
         $this->assertInstanceOf(BinaryFileResponse::class, $response->baseResponse);
 
+    }
+
+    public function test_download_file_rejects_non_matching_api_user(): void
+    {
+        Storage::fake('converted');
+        $owner = $this->createApiUser();
+        $filename = self::MEDIAKEY . '_1700000000_720p.mp4';
+
+        Storage::disk('converted')->put($filename, 'converted-body');
+        $this->createDownloadWithVideos($owner, [
+            ['file' => $filename, 'processed' => Video::PROCESSED],
+        ]);
+
         $otherUser = $this->createApiUser([
             'email' => 'other@example.org',
             'api_token' => str_repeat('b', 32),
         ]);
-
-        app('auth')->guard('api')->setUser(null);
 
         $this->withApiToken($otherUser)
             ->get('/api/download/' . $filename)
