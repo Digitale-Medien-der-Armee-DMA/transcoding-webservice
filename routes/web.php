@@ -19,6 +19,12 @@ Auth::routes();
 
 Route::redirect('/',  admin_url('auth/login'));
 
+Route::group(['prefix' => 'internal'], function(){
+    Route::get('/health/live', 'HealthController@live');
+    Route::get('/health/ready', 'HealthController@ready');
+    Route::get('/metrics', 'HealthController@metrics');
+});
+
 Route::group(['prefix' => 'api', 'middleware' => ['auth:api']], function(){
     Route::post('/transcode', 'DownloadController@store')->name('download');
     Route::get('/download/{filename}', 'VideoController@getFile')->name('getFile');
@@ -32,5 +38,4 @@ Route::group(['prefix' => 'api', 'middleware' => ['auth:api']], function(){
         Route::get('/download', 'DownloadController@jobs')->name('videoJobs');
     });
 });
-
 
