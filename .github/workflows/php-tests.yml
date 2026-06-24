@@ -13,6 +13,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Validate Compose files
+        run: |
+          docker compose --env-file .env.example -f compose.yaml config >/tmp/compose-production.yaml
+          docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml config >/tmp/compose-dev.yaml
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
