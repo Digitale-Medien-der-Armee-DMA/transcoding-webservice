@@ -40,6 +40,9 @@ jobs:
       - name: Validate composer files
         run: composer validate --no-check-publish
 
+      - name: Check framework upgrade baseline
+        run: php scripts/upgrade/framework_stage1_check.php
+
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-interaction --no-progress --no-scripts
 
