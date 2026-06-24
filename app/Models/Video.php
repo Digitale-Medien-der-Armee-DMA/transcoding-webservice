@@ -13,7 +13,10 @@ class Video extends Model
        'user_id', 'download_id', 'title', 'mediakey', 'disk', 'path', 'file', 'processed', 'percentage', 'worker', 'target', 'converted_at', 'downloaded_at', 'failed_at'
     ];
 
-    protected $casts = ['target' => 'json'];
+    protected $casts = [
+        'target' => 'json',
+        'processed' => 'integer',
+    ];
 
     public const UNPROCESSED = 0;
     public const PROCESSED = 1;

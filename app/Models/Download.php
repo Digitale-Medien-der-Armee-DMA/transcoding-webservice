@@ -19,7 +19,17 @@ class Download extends Model
 
     public $attributes = [];
 
-    protected $casts = ['payload' => 'json'];
+    protected $casts = [
+        'payload' => 'json',
+        'processed' => 'integer',
+    ];
+
+    public static $status = [
+        '0' => 'unprocessed',
+        '1' => 'processed',
+        '2' => 'processing',
+        '3' => 'failed',
+    ];
 
     public function user()
     {

@@ -93,7 +93,8 @@ Readiness und Zabbix-Metriken kommen ueber:
 
 Worker-Guardrails sind in `docs/WORKER_GUARDRAILS.md` dokumentiert. Wichtig fuer Produktion: `QUEUE_RETRY_AFTER` muss groesser als die effektive Laufzeit langer Transcodes bleiben, und der GPU-Free-Memory-Guard ist erst nach Zielhost-Validierung zu aktivieren.
 
+Statuswerte fuer `downloads.processed` und `videos.processed` sind in `docs/STATUS_SCHEMA.md` dokumentiert. `processed` ist aus Kompatibilitaetsgruenden weiterhin der Spaltenname, aber fachlich ein Integer-Statusfeld.
+
 ## Offene Punkte fuer Folge-PRs
 
-- PR 6: Statusspalten-Migration von boolean auf integer.
 - Spaeter: non-root UID/GID gegen echte Host-/NFS-Mounts validieren.

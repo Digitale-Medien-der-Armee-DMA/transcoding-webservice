@@ -128,7 +128,7 @@ class DownloadQueueController extends Controller
 //        $grid->processed('Processed')->using(['0' => 'No', '1' => 'Yes', '2' => 'Processing']);
 
         $grid->column('processed', __('Processed'))
-            ->using(Video::$status)
+            ->using(Download::$status)
             ->label([
                 '0' => 'default',
                 '1' => 'success',
