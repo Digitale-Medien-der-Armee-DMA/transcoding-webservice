@@ -1,0 +1,38 @@
+name: PHP tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  phpunit:
+    name: PHPUnit
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          extensions: curl, fileinfo, gd, intl, json, mbstring, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+
+      - name: Validate composer files
+        run: composer validate --no-check-publish
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress --no-scripts
+
+      - name: Prepare Laravel
+        run: |
+          cp .env.example .env
+          php artisan package:discover --ansi
+          php artisan key:generate --ansi
+          mkdir -p storage/app/public/uploaded storage/app/public/converted storage/framework/cache/data storage/framework/sessions storage/framework/testing storage/framework/views bootstrap/cache
+          chmod -R ug+rwx storage bootstrap/cache
+
+      - name: Run PHPUnit
+        run: vendor/bin/phpunit --testsuite Feature
