@@ -38,28 +38,28 @@ return [
             'driver' => 'database',
             'table' => 'jobs',
             'queue' => 'default',
-            'retry_after' => 42300,
+            'retry_after' => env('QUEUE_RETRY_AFTER', 90000),
         ],
 
         'database_download' => [
             'driver' => 'database',
             'table' => 'jobs',
             'queue' => 'download',
-            'retry_after' => 42300,
+            'retry_after' => env('QUEUE_RETRY_AFTER', 90000),
         ],
 
         'database_video' => [
             'driver' => 'database',
             'table' => 'jobs',
             'queue' => 'video',
-            'retry_after' => 42300,
+            'retry_after' => env('QUEUE_RETRY_AFTER', 90000),
         ],
 
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_HOST', 'localhost'),
             'queue' => 'default',
-            'retry_after' => 42300,
+            'retry_after' => env('QUEUE_RETRY_AFTER', 90000),
             'block_for' => 0,
         ],
 
@@ -67,14 +67,14 @@ return [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_HOST', 'localhost'),
             'queue' => 'download',
-            'retry_after' => 42300,
+            'retry_after' => env('QUEUE_RETRY_AFTER', 90000),
             'block_for' => 0,
         ],
         'beanstalkd_video' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_HOST', 'localhost'),
             'queue' => 'video',
-            'retry_after' => 42300,
+            'retry_after' => env('QUEUE_RETRY_AFTER', 90000),
             'block_for' => 0,
         ],
 
@@ -91,8 +91,8 @@ return [
             'driver' => 'redis',
             'connection' => 'default',
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => 90,
-            'block_for' => null,
+            'retry_after' => env('QUEUE_RETRY_AFTER', 90000),
+            'block_for' => env('QUEUE_REDIS_BLOCK_FOR', 5),
         ],
 
     ],

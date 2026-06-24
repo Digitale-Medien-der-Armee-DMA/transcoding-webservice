@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\GuardsVideoWorker;
 use App\Http\Controllers\TranscodingController;
 use App\Http\Controllers\VideoController;
 use App\Models\DownloadJob;
@@ -19,7 +20,7 @@ use GuzzleHttp\Exception\ClientException;
 
 class ConvertVideoJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, GuardsVideoWorker;
 
     public $video;
 
@@ -39,6 +40,11 @@ class ConvertVideoJob implements ShouldQueue
     public function handle()
     {
         Log::debug("Entering " . __METHOD__);
+        if (!$this->guardVideoWorker($this->job)) {
+            Log::debug("Exiting " . __METHOD__ . " after GPU guardrail release");
+            return;
+        }
+
         $existingFailedJobs = Video::where('download_id', '=', $this->video->download_id)->whereNotNull('failed_at')->count() > 0;
 
         if(!$this->video->getAttribute('converted_at') && !$existingFailedJobs)

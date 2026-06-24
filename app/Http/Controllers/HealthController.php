@@ -202,6 +202,8 @@ class HealthController extends Controller
                 'total' => 0,
                 'stale' => 0,
                 'stale_after_seconds' => (int) config('health.worker_stale_after_seconds'),
+                'heartbeat_enabled' => (bool) config('workers.heartbeat.enabled', true),
+                'gpu_guard' => $this->gpuGuardMetrics(),
             ];
         }
 
@@ -217,6 +219,18 @@ class HealthController extends Controller
                 })
                 ->count(),
             'stale_after_seconds' => $staleAfter,
+            'heartbeat_enabled' => (bool) config('workers.heartbeat.enabled', true),
+            'gpu_guard' => $this->gpuGuardMetrics(),
+        ];
+    }
+
+    private function gpuGuardMetrics(): array
+    {
+        return [
+            'enabled' => (bool) config('workers.gpu_guard.enabled', false),
+            'min_free_mb' => (int) config('workers.gpu_guard.min_free_mb', 0),
+            'retry_delay_seconds' => (int) config('workers.gpu_guard.retry_delay_seconds', 0),
+            'fail_open' => (bool) config('workers.gpu_guard.fail_open', false),
         ];
     }
 

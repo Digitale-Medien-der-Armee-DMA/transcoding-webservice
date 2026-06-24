@@ -19,6 +19,7 @@ Root-Dateien:
 - `docker/production/nginx.conf`: Laravel nginx vhost.
 - `scripts/smoke/`: CPU- und NVIDIA-Smoke-Tests fuer FFmpeg.
 - `Makefile`: Standardbefehle fuer Build, Start, Logs und Migrationen.
+- `docs/WORKER_GUARDRAILS.md`: Queue-/Worker-Defaults, Heartbeat und GPU-Guardrail.
 
 ## Services
 
@@ -90,9 +91,9 @@ Readiness und Zabbix-Metriken kommen ueber:
 - `/internal/health/ready`
 - `/internal/metrics`
 
+Worker-Guardrails sind in `docs/WORKER_GUARDRAILS.md` dokumentiert. Wichtig fuer Produktion: `QUEUE_RETRY_AFTER` muss groesser als die effektive Laufzeit langer Transcodes bleiben, und der GPU-Free-Memory-Guard ist erst nach Zielhost-Validierung zu aktivieren.
+
 ## Offene Punkte fuer Folge-PRs
 
-- PR 4: reproduzierbarer FFmpeg/NVIDIA/CUDA Runtime-Build und Smoke-Tests.
-- PR 5: Redis-/Worker-Guardrails, Retry-/Backoff-Strategie und GPU-Queue-Limits.
 - PR 6: Statusspalten-Migration von boolean auf integer.
 - Spaeter: non-root UID/GID gegen echte Host-/NFS-Mounts validieren.

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\GuardsVideoWorker;
 use App\Http\Controllers\TranscodingController;
 use App\Http\Controllers\VideoController;
 use App\Models\DownloadJob;
@@ -18,7 +19,7 @@ use Throwable;
 
 class CreateSpritemapJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, GuardsVideoWorker;
 
     public $video;
 
@@ -35,6 +36,11 @@ class CreateSpritemapJob implements ShouldQueue
     public function handle()
     {
         Log::debug("Entering " . __METHOD__);
+        if (!$this->guardVideoWorker($this->job)) {
+            Log::debug("Exiting " . __METHOD__ . " after GPU guardrail release");
+            return;
+        }
+
         $this->transcoder = new TranscodingController($this->video, $this->dimension, $this->attempts());
         try
         {

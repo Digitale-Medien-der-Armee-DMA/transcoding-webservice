@@ -59,11 +59,11 @@ services:
       - php
       - artisan
       - queue:work
-      - --queue=download
-      - --sleep=${WORKER_SLEEP:-3}
-      - --tries=${WORKER_TRIES:-3}
+      - --queue=${WORKER_DOWNLOAD_QUEUE:-download}
+      - --sleep=${WORKER_DOWNLOAD_SLEEP:-3}
+      - --tries=${WORKER_DOWNLOAD_TRIES:-3}
       - --timeout=${WORKER_DOWNLOAD_TIMEOUT:-84600}
-      - --memory=${WORKER_MEMORY:-1024}
+      - --memory=${WORKER_DOWNLOAD_MEMORY:-768}
     depends_on:
       redis:
         condition: service_healthy
@@ -96,11 +96,11 @@ services:
       - php
       - artisan
       - queue:work
-      - --queue=video
-      - --sleep=${WORKER_SLEEP:-3}
-      - --tries=${WORKER_TRIES:-3}
+      - --queue=${WORKER_VIDEO_QUEUE:-video}
+      - --sleep=${WORKER_VIDEO_SLEEP:-5}
+      - --tries=${WORKER_VIDEO_TRIES:-2}
       - --timeout=${WORKER_VIDEO_TIMEOUT:-84600}
-      - --memory=${WORKER_MEMORY:-1024}
+      - --memory=${WORKER_VIDEO_MEMORY:-1024}
     depends_on:
       redis:
         condition: service_healthy
