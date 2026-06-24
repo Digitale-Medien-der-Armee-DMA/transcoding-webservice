@@ -203,6 +203,8 @@ Testablauf:
 8. Monitoring in Zabbix pruefen.
 9. Lasttest mit 1, 2, 4, spaeter 6 parallelen Jobs; 20 nur nach Messwerten.
 
+PR11 konkretisiert den Staging-Lauf in `docs/STAGING_RUNBOOK.md` und den Lasttest in `docs/LOAD_TEST_PLAN.md`.
+
 ## Phase 8: Produktionsmigration
 
 Ziel: Downtime unter 30 Minuten.
@@ -223,3 +225,5 @@ Vorgehen:
 - Rollback:
   - vorheriges Image/Compose-State bereit halten.
   - DB-Migrationen nur vorwaerts, wenn rollbackfaehig oder per Backup abgesichert.
+
+PR11 konkretisiert die Cutover-Freigabe in `docs/RELEASE_CHECKLIST.md` und den Rueckweg in `docs/ROLLBACK_PLAN.md`.
