@@ -18,10 +18,11 @@ foreach (array_merge($composerLock['packages'] ?? [], $composerLock['packages-de
 }
 
 $expectedLockedPackages = [
-    'laravel/framework' => 'v7.30.4',
-    'laravel/ui' => 'v2.5.0',
+    'laravel/framework' => 'v8.83.29',
+    'laravel/ui' => 'v3.4.6',
     'encore/laravel-admin' => 'v1.8.11',
-    'guzzlehttp/guzzle' => '6.5.5',
+    'guzzlehttp/guzzle' => '7.12.3',
+    'laravel/legacy-factories' => 'v1.4.2',
     'php-ffmpeg/php-ffmpeg' => 'v0.16',
     'phpunit/phpunit' => '9.5.4',
 ];
@@ -44,16 +45,16 @@ foreach ($expectedLockedPackages as $packageName => $expectedVersion) {
 $phpConstraint = $composerJson['require']['php'] ?? null;
 $laravelConstraint = $composerJson['require']['laravel/framework'] ?? null;
 
-if ($phpConstraint !== '^7.2.5') {
-    $errors[] = "composer.json PHP constraint is {$phpConstraint}, expected ^7.2.5 for Stage 1 baseline";
+if ($phpConstraint !== '^7.4') {
+    $errors[] = "composer.json PHP constraint is {$phpConstraint}, expected ^7.4 for Laravel 8 baseline";
 }
 
-if ($laravelConstraint !== '^7.5') {
-    $errors[] = "composer.json Laravel constraint is {$laravelConstraint}, expected ^7.5 for Stage 1 baseline";
+if ($laravelConstraint !== '^8.83') {
+    $errors[] = "composer.json Laravel constraint is {$laravelConstraint}, expected ^8.83 for Laravel 8 baseline";
 }
 
 if (PHP_VERSION_ID < 70400 || PHP_VERSION_ID >= 80000) {
-    $errors[] = 'Stage 1 CI must run on PHP 7.4 before dependency resolution changes';
+    $errors[] = 'Laravel 8 baseline CI must run on PHP 7.4 before the PHP 8 runtime hop';
 }
 
 $phpFfmpeg = $packages['php-ffmpeg/php-ffmpeg']['require']['php'] ?? '';
@@ -63,14 +64,14 @@ if (strpos($phpFfmpeg, '^8') !== false) {
 }
 
 if ($errors !== []) {
-    fwrite(STDERR, "Framework Stage 1 readiness check failed:\n");
+    fwrite(STDERR, "Framework upgrade baseline check failed:\n");
     foreach ($errors as $error) {
         fwrite(STDERR, "- {$error}\n");
     }
     exit(1);
 }
 
-echo "Framework Stage 1 readiness baseline:\n";
+echo "Framework upgrade baseline:\n";
 foreach ($expectedLockedPackages as $packageName => $expectedVersion) {
     echo "- {$packageName}: {$expectedVersion}\n";
 }
