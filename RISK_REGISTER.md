@@ -24,6 +24,7 @@ Stand: 2026-06-23
 | R-018 | Fehlerpfade setzen `failed_at` nicht konsistent | Mittel | Hoch | Code setzt oft nur `processed=FAILED` | Failure-Modell konsolidieren |
 | R-019 | VIMP-Quellen sollen behalten werden, Webservice-Cleanup loescht aber eigene Upload-Kopie | Mittel | Mittel | VIMP-Quelle bleibt extern, Webservice-Kopie wird geloescht | Flow dokumentieren, Retention konfigurierbar |
 | R-020 | Ausfallzeit > 30 Minuten beim Cutover | Kritisch | Mittel | Mehrere Migrationsachsen: Runtime, DB, Queue, GPU | Staging-Dryrun, Vorbuild, Rollback, kleine PRs |
+| R-021 | Composer 2.10 blockiert `encore/laravel-admin` wegen Security-Advisories | Hoch | Hoch | Laravel-8-Hop kann nur als gezielter Partial-Resolve erfolgen; Full-Update blockiert gegen `encore/laravel-admin <=1.8.19` | Separater Admin-/Security-PR: Paket ersetzen, forken oder Advisory-Risiko formal akzeptieren |
 
 ## Blockierende Fragen vor Implementierung
 

@@ -6,11 +6,12 @@ use App\Services\WorkerHeartbeat;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Schema;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,7 +33,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         URL::forceRootUrl(env('APP_URL'));
-	    Schema::defaultStringLength(191);
+        Schema::defaultStringLength(191);
+        Paginator::useBootstrap();
 
         Queue::before(function (JobProcessing $event) {
             // $event->connectionName
