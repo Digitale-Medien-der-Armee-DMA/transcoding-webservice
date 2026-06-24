@@ -102,7 +102,7 @@ class VideoController extends Controller
             if ($download->videos->count() > 0) {
                 $video = Video::where('mediakey', '=', $mediakey)->firstOrFail();
                 $total = Video::where('download_id', $video->download_id)->count();
-                $processed = Video::where('download_id', $video->download_id)->where('processed', 1)->count();
+                $processed = Video::where('download_id', $video->download_id)->where('processed', Video::PROCESSED)->count();
                 Log::info('Transcoding status for mediakey ' . $mediakey . ': processed ' . $processed . ' of ' . $total);
                 Log::debug("Exiting " . __METHOD__);
                 return response()->json(round(($processed / $total) * 100, 0))->setStatusCode(200);

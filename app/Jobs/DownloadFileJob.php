@@ -43,7 +43,7 @@ class DownloadFileJob implements ShouldQueue
 
         Log::info("Starting download of mediakey " . $payload['mediakey']);
 
-        if ($this->download->processing !== Download::PROCESSING) {
+        if ($this->download->processed !== Download::PROCESSING) {
             try {
 
                 $guzzle = new Client();

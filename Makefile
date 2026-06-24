@@ -34,7 +34,7 @@ migrate:
 	$(COMPOSE) -f $(COMPOSE_FILE) exec app php artisan migrate --force
 
 test:
-	vendor/bin/phpunit tests/Feature/VimpContractTest.php tests/Feature/HealthMetricsTest.php tests/Feature/WorkerGuardrailsTest.php
+	vendor/bin/phpunit tests/Feature/VimpContractTest.php tests/Feature/HealthMetricsTest.php tests/Feature/WorkerGuardrailsTest.php tests/Feature/StatusSchemaTest.php
 
 compose-validate:
 	$(COMPOSE) --env-file .env.example -f compose.yaml config >/dev/null
