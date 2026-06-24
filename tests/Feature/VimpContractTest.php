@@ -113,6 +113,8 @@ class VimpContractTest extends TestCase
             'api_token' => str_repeat('b', 32),
         ]);
 
+        app('auth')->guard('api')->setUser(null);
+
         $this->withApiToken($otherUser)
             ->get('/api/download/' . $filename)
             ->assertStatus(500);
