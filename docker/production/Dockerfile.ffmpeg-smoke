@@ -1,0 +1,27 @@
+ARG CUDA_IMAGE=nvidia/cuda:13.3.0-base-ubuntu24.04
+FROM ${CUDA_IMAGE}
+
+SHELL ["/bin/sh", "-euxc"]
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        coreutils \
+        ffmpeg \
+        grep \
+        procps \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/production/ffmpeg-smoke.sh /usr/local/bin/ffmpeg-smoke
+COPY scripts/smoke/ffmpeg-cpu-smoke.sh /usr/local/bin/ffmpeg-cpu-smoke
+COPY scripts/smoke/ffmpeg-gpu-smoke.sh /usr/local/bin/ffmpeg-gpu-smoke
+
+RUN chmod +x \
+        /usr/local/bin/ffmpeg-smoke \
+        /usr/local/bin/ffmpeg-cpu-smoke \
+        /usr/local/bin/ffmpeg-gpu-smoke
+
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+
+ENTRYPOINT ["ffmpeg-smoke"]
+CMD ["gpu"]
