@@ -14,8 +14,10 @@ Root-Dateien:
 - `compose.dev.yaml`: Dev-/Staging-Override mit lokaler MariaDB.
 - `docker/production/Dockerfile.app`: PHP-FPM/Laravel Runtime und Worker-Image.
 - `docker/production/Dockerfile.nginx`: nginx Web-Frontend.
+- `docker/production/Dockerfile.ffmpeg-smoke`: gepinnte CUDA/Ubuntu-24.04-FFmpeg-Smoke-Runtime.
 - `docker/production/app-entrypoint.sh`: Runtime-Verzeichnis-Setup und optionale DB-/Redis-Wartephase.
 - `docker/production/nginx.conf`: Laravel nginx vhost.
+- `scripts/smoke/`: CPU- und NVIDIA-Smoke-Tests fuer FFmpeg.
 - `Makefile`: Standardbefehle fuer Build, Start, Logs und Migrationen.
 
 ## Services
@@ -26,6 +28,8 @@ Root-Dateien:
 - `worker-video-gpu`: Queue `video`, einziger Service mit NVIDIA Device Reservation.
 - `scheduler`: fuehrt `php artisan schedule:run` im Minutenloop aus.
 - `redis`: Queue/Cache-Backend fuer den Blueprint.
+- `ffmpeg-smoke-cpu`: Profil `smoke`, synthetischer CPU-Encode/Probe-Test.
+- `ffmpeg-smoke-gpu`: Profil `gpu-smoke`, synthetischer NVENC- und CUDA-Decode-Test.
 - `db`: nur in `compose.dev.yaml`, nicht im Production-Stack.
 
 ## Production Start
@@ -53,7 +57,7 @@ make dev-up
 make migrate
 ```
 
-## GPU-Hinweis
+## GPU- und FFmpeg-Hinweis
 
 `worker-video-gpu` reserviert ein NVIDIA-GPU-Device und setzt:
 
@@ -61,7 +65,7 @@ make migrate
 - `NVIDIA_DRIVER_CAPABILITIES=compute,utility,video`
 - `GPU_DEVICE_COUNT`
 
-Dieser PR liefert bewusst noch keinen finalen CUDA-/NVENC-FFmpeg-Build. Das App-Image installiert Distribution-`ffmpeg` als lauffaehige Baseline. Der reproduzierbare FFmpeg/NVIDIA-Runtime-Pfad, NVENC/NVDEC-Smoke-Tests und GPU-Guardrails gehoeren zu PR 4.
+Der FFmpeg-Smoke-Pfad ist in `docs/FFMPEG_NVIDIA.md` dokumentiert. Die Smoke-Runtime nutzt ein gepinntes offizielles NVIDIA-CUDA-Ubuntu-24.04-Image und prueft CPU-Encoding, NVENC-Encoding sowie CUDA-Decode auf dem Zielhost. Das Laravel-App-Image bleibt in dieser Uebergangsstufe auf der PHP-7.4-Basis aus PR 3.
 
 ## Volumes
 
