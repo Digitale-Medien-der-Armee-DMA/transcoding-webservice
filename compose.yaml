@@ -12,6 +12,7 @@ services:
     environment:
       WAIT_FOR_DB: "true"
       WAIT_FOR_REDIS: "${HEALTH_REDIS_REQUIRED:-false}"
+      ADMIN_UPLOADS_ENABLED: "${ADMIN_UPLOADS_ENABLED:-false}"
     volumes:
       - app-storage:/var/www/html/storage
       - app-cache:/var/www/html/bootstrap/cache

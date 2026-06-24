@@ -62,7 +62,7 @@ return [
 
         'namespace' => 'App\\Admin\\Controllers',
 
-        'middleware' => ['web', 'admin'],
+        'middleware' => ['web', 'admin', \App\Http\Middleware\RejectAdminUploads::class],
     ],
 
     /*
@@ -151,6 +151,9 @@ return [
     |
     */
     'upload' => [
+
+        // Keep uploads disabled by default until laravel-admin's upload surface is replaced or formally accepted.
+        'enabled' => env('ADMIN_UPLOADS_ENABLED', false),
 
         // Disk in `config/filesystem.php`.
         'disk' => 'admin',

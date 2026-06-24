@@ -26,7 +26,7 @@ Der CI-Check `scripts/upgrade/framework_stage1_check.php` prueft nach PR9 diese 
 | `guzzlehttp/guzzle` | `7.12.3` | VIMP HTTP-Kommunikation |
 | `laravel/legacy-factories` | `v1.4.2` | erhaelt Laravel-7-Factory-Semantik waehrend des Laravel-8-Hops |
 | `php-ffmpeg/php-ffmpeg` | `v0.16` | blockiert PHP-8-Runtime |
-| `phpunit/phpunit` | `9.5.4` | aktuelle Testbasis |
+| `phpunit/phpunit` | `9.6.34` | aktuelle Testbasis |
 
 Composer-Constraints fuer PR9:
 
@@ -45,6 +45,17 @@ Naechster Dependency-PR nach PR9:
 - `fideloper/proxy` entfernen oder ersetzen, wenn der naechste Laravel-Hop das verlangt.
 - `php-ffmpeg/php-ffmpeg` vor PHP 8.x separat anheben oder ersetzen.
 - Erst danach PHP 8.x und Laravel 9+ vorbereiten.
+
+## PR10 Security-Hardening
+
+PR10 blockiert Admin-Uploads standardmaessig ueber `App\Http\Middleware\RejectAdminUploads` und entfernt die Avatar-Upload-Felder aus den Admin-Forms. Uploads koennen nur explizit mit `ADMIN_UPLOADS_ENABLED=true` wieder aktiviert werden.
+
+Zusaetzlich entfernt PR10 `laravel/tinker`, damit `psy/psysh` nicht mehr installiert wird, und hebt die PHP-7.4-kompatiblen Test-/Parser-Pakete auf sichere Patchlinien.
+
+Bekannte Restrisiken bleiben:
+
+- `encore/laravel-admin <=1.8.19` hat laut GitHub Advisory keine gepatchte 1.x-Version; der Upload-Angriffsweg ist in dieser App blockiert, das Paket bleibt aber formal advisory-betroffen.
+- Laravel 8 bleibt EOL und wird erst durch den spaeteren Laravel-9+-Hop aus den Framework-Advisories herausgefuehrt.
 
 ## Keine neuen Tools in diesem Hop
 

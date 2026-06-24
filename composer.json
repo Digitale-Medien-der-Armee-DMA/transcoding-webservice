@@ -21,7 +21,6 @@
         "laravel-admin-ext/scheduling": "^1.1",
         "laravel/framework": "^8.83",
         "laravel/legacy-factories": "^1.4",
-        "laravel/tinker": "^2.0",
         "laravel/ui": "^3.4",
         "pda/pheanstalk": "^4.0",
         "php-ffmpeg/php-ffmpeg": "^0.16",

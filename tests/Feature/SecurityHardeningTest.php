@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\RejectAdminUploads;
 use App\Jobs\DownloadFileJob;
 use App\Models\Download;
 use App\Models\Profile;
@@ -9,8 +10,11 @@ use App\Models\User;
 use App\Models\Video;
 use App\Services\Security\MediaPathGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Support\FakeVimpServer;
 use Tests\TestCase;
 
@@ -132,6 +136,40 @@ class SecurityHardeningTest extends TestCase
         } finally {
             $server->stop();
         }
+    }
+
+    public function test_admin_uploads_are_rejected_by_default(): void
+    {
+        config(['admin.upload.enabled' => false]);
+
+        $request = Request::create('/admin/auth/setting', 'POST', [], [], [
+            'avatar' => UploadedFile::fake()->create('avatar.php', 1, 'application/x-php'),
+        ]);
+
+        try {
+            app(RejectAdminUploads::class)->handle($request, function () {
+                return response('ok');
+            });
+
+            $this->fail('Admin upload request was not rejected.');
+        } catch (HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
+    }
+
+    public function test_admin_uploads_can_be_explicitly_enabled(): void
+    {
+        config(['admin.upload.enabled' => true]);
+
+        $request = Request::create('/admin/auth/setting', 'POST', [], [], [
+            'avatar' => UploadedFile::fake()->create('avatar.png', 1, 'image/png'),
+        ]);
+
+        $response = app(RejectAdminUploads::class)->handle($request, function () {
+            return response('ok');
+        });
+
+        $this->assertSame(200, $response->getStatusCode());
     }
 
     private function withApiToken(User $user): self

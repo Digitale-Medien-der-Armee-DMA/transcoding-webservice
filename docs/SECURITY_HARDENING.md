@@ -38,6 +38,14 @@ SECURITY_LOG_SCRUBBING_ENABLED=true
 
 Log-Scrubbing maskiert sensible Context-Keys wie `api_token`, `authorization`, `password` und `secret` sowie entsprechende Query-/Header-Fragmente in Log-Strings.
 
+## Admin-Uploads
+
+```env
+ADMIN_UPLOADS_ENABLED=false
+```
+
+Admin-Uploads sind standardmaessig deaktiviert, weil `encore/laravel-admin <=1.8.19` eine nicht gepatchte Arbitrary-File-Upload-Advisory hat. Die App nutzt keine Admin-Upload-Felder mehr; `App\Http\Middleware\RejectAdminUploads` blockiert Multipart-Dateien im Admin-Routing. Eine Aktivierung darf nur nach dokumentierter Risikoakzeptanz oder nach Ersatz/Fork des Admin-Pakets erfolgen.
+
 ## Admin-Credentials und Token-Rotation
 
 - Initiale Admin-Credentials nur ueber kontrollierte Setup-Prozedur erzeugen und danach rotieren.
