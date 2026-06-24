@@ -6,6 +6,7 @@ use App\Models\Download;
 use App\Models\DownloadJob;
 use App\Models\Video;
 use App\Models\User;
+use App\Services\Security\MediaPathGuard;
 use GuzzleHttp\RequestOptions;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\Jobs\Job;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use GuzzleHttp\Client;
+use RuntimeException;
 use Throwable;
 
 class DownloadFileJob implements ShouldQueue
@@ -38,6 +40,11 @@ class DownloadFileJob implements ShouldQueue
 	$start = now();
         $path = $payload['mediakey'];
 
+        if (!app(MediaPathGuard::class)->isSafeRelativePath($path)) {
+            Log::warning('Download path rejected by media path guard', ['download_id' => $this->download->id]);
+            $this->download->update(['processed' => Download::FAILED]);
+            return;
+        }
 
         $api_token = User::where('id', '=', $this->download->user_id)->pluck('api_token')->first();
 
@@ -52,14 +59,18 @@ class DownloadFileJob implements ShouldQueue
 
                 $this->download->update(['processed' => Download::PROCESSING]);
                 $response = $guzzle->post($payload['source']['url'], [
+                    RequestOptions::CONNECT_TIMEOUT => (int) config('security.downloads.connect_timeout_seconds', 10),
+                    RequestOptions::TIMEOUT => (int) config('security.downloads.timeout_seconds', 300),
                     RequestOptions::JSON => [
                         'api_token' => $api_token,
                     ]
                 ]);
                 Log::debug(__METHOD__ .': '. $response->getReasonPhrase());
-                Storage::disk('uploaded')->put($path, $response->getBody());
+                $this->storeDownloadedBody($path, $response->getBody());
             } catch (Throwable $exception) {
                 Log::info('Exception occurred while downloading: ' . $exception->getMessage());
+                $this->download->update(['processed' => Download::FAILED]);
+                return;
             }
         } else {
             Log::info($path . ' exists already, cancelling');
@@ -152,6 +163,35 @@ class DownloadFileJob implements ShouldQueue
             $videoJobId = dispatch($videoJob);
         }
         Log::debug("Exiting " . __METHOD__);
+    }
+
+    private function storeDownloadedBody(string $path, $body): void
+    {
+        $maxBytes = (int) config('security.downloads.max_bytes', 0);
+
+        if ($maxBytes <= 0) {
+            Storage::disk('uploaded')->put($path, $body);
+            return;
+        }
+
+        $bytes = 0;
+        $stream = fopen('php://temp', 'w+');
+
+        while (!$body->eof()) {
+            $chunk = $body->read(1024 * 1024);
+            $bytes += strlen($chunk);
+
+            if ($bytes > $maxBytes) {
+                fclose($stream);
+                throw new RuntimeException('Downloaded source exceeds configured maximum size');
+            }
+
+            fwrite($stream, $chunk);
+        }
+
+        rewind($stream);
+        Storage::disk('uploaded')->put($path, $stream);
+        fclose($stream);
     }
 
     public function failed(Throwable $exception)

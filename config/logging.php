@@ -39,12 +39,14 @@ return [
             'driver' => 'stack',
             'channels' => ['single'],
             'ignore_exceptions' => false,
+            'tap' => [App\Logging\ScrubSensitiveLogs::class],
         ],
 
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => 'debug',
+            'tap' => [App\Logging\ScrubSensitiveLogs::class],
         ],
 
         'daily' => [
@@ -52,6 +54,7 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => 'debug',
             'days' => 14,
+            'tap' => [App\Logging\ScrubSensitiveLogs::class],
         ],
 
         'slack' => [
@@ -79,6 +82,7 @@ return [
             'with' => [
                 'stream' => 'php://stderr',
             ],
+            'tap' => [App\Logging\ScrubSensitiveLogs::class],
         ],
 
         'syslog' => [

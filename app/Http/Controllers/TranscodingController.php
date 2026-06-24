@@ -9,6 +9,7 @@ use App\Models\Profile;
 use App\Models\Video;
 use App\Models\Worker;
 use App\Models\User;
+use App\Services\Security\MediaPathGuard;
 use Carbon\Carbon;
 use Exception;
 use FFMpeg\Filters\Frame\CustomFrameFilter;
@@ -600,13 +601,23 @@ class TranscodingController extends Controller
     {
         if($this->getHLS())
         {
-            Storage::disk('converted')->deleteDirectory($this->getHLSDirectory());
+            $directory = $this->getHLSDirectory();
+            if (!app(MediaPathGuard::class)->isSafeRelativePath($directory)) {
+                throw new Exception('Unsafe HLS output directory');
+            }
+            Storage::disk('converted')->deleteDirectory($directory);
         }
     }
 
     private function getHLSDirectory()
     {
-        return $this->video->path . '_' . $this->video->target['label'] . '_' . $this->video->target['extension'];
+        $directory = $this->video->path . '_' . $this->video->target['label'] . '_' . $this->video->target['extension'];
+
+        if (!app(MediaPathGuard::class)->isSafeRelativePath($directory)) {
+            throw new Exception('Unsafe HLS output directory');
+        }
+
+        return $directory;
     }
 
     public static function getFFmpegVersion()
