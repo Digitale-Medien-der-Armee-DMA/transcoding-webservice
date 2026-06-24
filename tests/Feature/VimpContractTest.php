@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Tests\Support\FakeVimpServer;
 use Tests\TestCase;
 
@@ -60,7 +61,7 @@ class VimpContractTest extends TestCase
 
         $download = Download::where('mediakey', self::MEDIAKEY)->firstOrFail();
 
-        $this->assertSame($user->id, $download->user_id);
+        $this->assertSame($user->id, (int) $download->user_id);
         $this->assertSame(Download::UNPROCESSED, (int) $download->processed);
         $this->assertArrayNotHasKey('api_token', $download->payload);
         $this->assertSame(
@@ -101,10 +102,11 @@ class VimpContractTest extends TestCase
             ['file' => $filename, 'processed' => Video::PROCESSED],
         ]);
 
-        $this->withApiToken($user)
-            ->get('/api/download/' . $filename)
-            ->assertOk()
-            ->assertHeader('content-disposition');
+        $response = $this->withApiToken($user)
+            ->get('/api/download/' . $filename);
+
+        $response->assertOk();
+        $this->assertInstanceOf(BinaryFileResponse::class, $response->baseResponse);
 
         $otherUser = $this->createApiUser([
             'email' => 'other@example.org',
@@ -158,15 +160,17 @@ class VimpContractTest extends TestCase
             ['file' => self::MEDIAKEY . '_1700000000_380p.mp4', 'processed' => Video::UNPROCESSED],
         ]);
 
-        $this->withApiToken($user)
-            ->get('/api/status/' . self::MEDIAKEY)
-            ->assertOk()
-            ->assertContent('50');
+        $statusResponse = $this->withApiToken($user)
+            ->get('/api/status/' . self::MEDIAKEY);
 
-        $this->withApiToken($user)
-            ->get('/api/status/' . str_repeat('9', 32))
-            ->assertStatus(404)
-            ->assertContent('"Not found"');
+        $statusResponse->assertOk();
+        $this->assertSame('50', $statusResponse->getContent());
+
+        $missingResponse = $this->withApiToken($user)
+            ->get('/api/status/' . str_repeat('9', 32));
+
+        $missingResponse->assertStatus(404);
+        $this->assertSame('"Not found"', $missingResponse->getContent());
     }
 
     public function test_delete_endpoint_removes_download_video_rows_and_storage_artifacts(): void

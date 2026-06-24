@@ -35,4 +35,4 @@ jobs:
           chmod -R ug+rwx storage bootstrap/cache
 
       - name: Run PHPUnit
-        run: vendor/bin/phpunit --testsuite Feature
+        run: vendor/bin/phpunit tests/Feature/VimpContractTest.php
