@@ -1,12 +1,12 @@
-# Iterative Upgrade Track PR14-20
+# Iterative Clean-Install Track PR14-20
 
 Stand: 2026-06-25
 
-Dieser Track fasst die naechsten einzelnen Modernisierungs-PRs zu einem groesseren, iterativen Schritt zusammen. Ziel ist, den Admin-Paket-Blocker zu entfernen und danach die PHP-/Laravel-Hops kontrolliert durchzufuehren, ohne den VIMP-Vertrag oder den Produktions-Cutover zu destabilisieren.
+Dieser Track fasst die naechsten einzelnen Modernisierungs-PRs zu einem groesseren, iterativen Schritt zusammen. Das Projekt wird als Clean Install fuer den neuen Produktionsbetrieb behandelt. Ziel ist, den Admin-Paket-Blocker zu entfernen und danach die PHP-/Laravel-Hops kontrolliert durchzufuehren, ohne den VIMP-Vertrag oder die Neuinstallation zu destabilisieren.
 
 ## Ausfuehrungsmodell
 
-- PR14-20 gehoeren zu einem gemeinsamen Upgrade-Track.
+- PR14-20 gehoeren zu einem gemeinsamen Clean-Install-Track.
 - Jeder PR bleibt ein eigener mergebarer Checkpoint gegen `master`.
 - Nach jedem Checkpoint muessen lokale Baseline, GitHub Actions und VIMP-Contract-Tests gruen sein.
 - Ein fehlgeschlagener Checkpoint wird korrigiert, bevor der naechste Checkpoint begonnen wird.
@@ -14,6 +14,7 @@ Dieser Track fasst die naechsten einzelnen Modernisierungs-PRs zu einem groesser
 - Kein Checkpoint darf Admin-Uploads reaktivieren.
 - Composer Full-Updates sind erst nach Entfernung von `encore/laravel-admin` erlaubt.
 - Zielversionen fuer PHP und finales Laravel-Ziel bleiben ein Freigabepunkt vor dem Runtime-/Framework-Hop.
+- Anleitungen beschreiben Bootstrap, Erstinstallation und Betriebsabnahme, nicht Aktualisierung einer bestehenden Installation.
 
 ## Track-Zielbild
 
@@ -25,7 +26,7 @@ Nach PR20 soll gelten:
 - PHP-8-Runtime-Hop ist vorbereitet oder umgesetzt, je nach freigegebener Zielversion.
 - Laravel ist mindestens durch die notwendigen Zwischenhops auf dem Weg zum finalen Ziel.
 - VIMP Contract-Tests, Health-/Metrics-Tests, Worker-Guardrail-Tests, Status-Tests und Security-Hardening-Tests bleiben die Baseline.
-- Staging-/Rollback-Dokumentation ist nach jedem Dependency- oder Runtime-Hop aktualisiert.
+- Installations-, Staging- und Betriebsabnahme-Dokumentation ist nach jedem Dependency- oder Runtime-Hop aktualisiert.
 
 ## PR14: Internal Admin Operations Shell
 
@@ -37,13 +38,13 @@ Umfang:
 
 - Neuer interner Admin-Prefix fuer Betriebsansichten.
 - Read-only Dashboard fuer Health, Queue, Worker und Runtime-Status.
-- Zugriffsschutz ueber bestehende Auth-/Admin-Pruefung, ohne Token-/URL-Verhalten zu aendern.
+- Zugriffsschutz ueber den aktuellen Auth-/Admin-Pfad, ohne Token-/URL-Verhalten zu aendern.
 - Keine Delete-, Edit- oder Upload-Aktionen.
 - Tests fuer Zugriffsschutz, Statusdarstellung und leere Datenstaende.
 
 Exit:
 
-- Alte `laravel-admin`-Oberflaeche bleibt parallel nutzbar.
+- Die aktuelle `laravel-admin`-Oberflaeche bleibt parallel nutzbar, bis der neue interne Admin-Pfad vollstaendig ist.
 - Operations-Team kann Read-only-Status ohne `laravel-admin` pruefen.
 
 ## PR15: Internal Profile and Queue Management
@@ -76,7 +77,7 @@ Umfang:
 
 - VIMP-User/API-Token-Management ohne `laravel-admin`.
 - Admin-Login, Logout und Settings ohne `Encore\Admin\Facades\Admin`.
-- Rollen-/Permission-Migration oder bewusst reduziertes internes Rollenmodell.
+- Bootstrap fuer interne Admin-Rollen oder bewusst reduziertes internes Rollenmodell.
 - Entfernung von `laravel-admin-ext/*`.
 - Entfernung von `encore/laravel-admin`, `config/admin.php`, nicht mehr genutzten Admin-Assets und alten Admin-Providern.
 - Composer Audit Ergebnis dokumentieren.
@@ -120,12 +121,12 @@ Umfang:
 - Mailer-Umstellung, falls der Hop sie erzwingt.
 - PHPUnit-/Test-Setup nur soweit noetig anpassen.
 - Production Dockerfile, Compose-Doku und CI auf die neue Runtime heben.
-- VIMP-Staging-Test fuer API, Callback, Download, Finished und Delete dokumentieren.
+- VIMP-Staging-Test fuer API, Callback, Download, Finished und Delete im Clean-Install-Setup dokumentieren.
 
 Exit:
 
 - App laeuft in CI und Container auf der freigegebenen PHP-8-Basis.
-- Laravel 9 ist gruen mit den bestehenden Contract- und Feature-Tests.
+- Laravel 9 ist gruen mit den Contract- und Feature-Tests.
 
 ## PR19: Laravel 10/11 Bridge Hop
 
@@ -157,13 +158,13 @@ Umfang:
 - PHP-Zielversion gemaess Freigabe.
 - Node-24-basierter Build bleibt Standard, sofern kein neuer Zielentscheid vorliegt.
 - Admin-/Frontend-Build auf gepflegte minimale Build-Strecke oder Vite finalisieren.
-- Upgrade-, Deployment-, Rollback- und Operations-Dokumentation final aktualisieren.
+- Installations-, Deployment-, Recovery- und Operations-Dokumentation final aktualisieren.
 - Full Composer Audit und finale Restrisiko-Liste.
 
 Exit:
 
 - `docs/UPGRADE_NOTES.md` beschreibt die neue Runtime-/Framework-Baseline.
-- `docs/RELEASE_CHECKLIST.md` ist fuer Staging/Production-Cutover aktuell.
+- `docs/RELEASE_CHECKLIST.md` ist fuer Staging- und Produktionsabnahme der Neuinstallation aktuell.
 - GitHub Actions, lokale Baseline und VIMP-Staging-Test sind dokumentiert gruen.
 
 ## Gemeinsame Tests pro Checkpoint
@@ -187,7 +188,7 @@ Zusaetzlich bei Dependency-, Runtime- oder Framework-Hops:
 - `composer audit` Ergebnis dokumentieren.
 - GitHub Actions auf dem PR abwarten.
 - VIMP-Staging-Test nach `docs/VIMP_STAGING_TEST.md` oder `docs/STAGING_RUNBOOK.md` dokumentieren.
-- Rollback-Auswirkung in `docs/ROLLBACK_PLAN.md` pruefen.
+- Recovery-/Rebuild-Auswirkung in `docs/ROLLBACK_PLAN.md` oder einer spaeteren Clean-Install-Recovery-Doku pruefen.
 
 ## Abbruchkriterien
 
@@ -197,4 +198,4 @@ Der Track wird angehalten, wenn einer dieser Punkte eintritt:
 - Composer Resolve erzwingt nicht freigegebene Zielversionen.
 - Admin-Token-/URL-Verhalten muesste ohne Security-Freigabe geaendert werden.
 - Staging zeigt inkompatibles HLS-, Download-, Finished- oder Delete-Verhalten.
-- Runtime-Hop braucht Produktions-Compose- oder Volume-Aenderungen ausserhalb des freigegebenen Layouts.
+- Runtime-Hop braucht Produktions-Compose- oder Volume-Aenderungen ausserhalb des freigegebenen Clean-Install-Layouts.

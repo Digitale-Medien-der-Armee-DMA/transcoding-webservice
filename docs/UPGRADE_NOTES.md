@@ -2,7 +2,7 @@
 
 Stand: 2026-06-25
 
-Diese Notizen fassen den aktuellen Modernisierungsstand zusammen und definieren Leitplanken fuer Folge-Upgrades.
+Diese Notizen fassen den aktuellen Modernisierungsstand zusammen und definieren Leitplanken fuer den Clean-Install-Track.
 
 ## Aktueller Stand
 
@@ -23,13 +23,14 @@ Diese Notizen fassen den aktuellen Modernisierungsstand zusammen und definieren 
 
 ## Upgrade-Regeln
 
-- PR14-20 laufen als ein gemeinsamer iterativer Upgrade-Track, dokumentiert in `docs/ITERATIVE_UPGRADE_TRACK.md`.
+- PR14-20 laufen als ein gemeinsamer iterativer Clean-Install-Track, dokumentiert in `docs/ITERATIVE_UPGRADE_TRACK.md`.
 - Jeder Track-Checkpoint bleibt ein eigener mergebarer PR mit klarem Exit-Kriterium.
 - Vor jedem Dependency-Hop Contract-Tests gruen.
-- Nach jedem Dependency-Hop VIMP-Staging-Test wiederholen.
+- Nach jedem Dependency-Hop VIMP-Staging-Test im Neuinstallations-Setup wiederholen.
 - Keine ungeplanten Full-Updates auf Composer 2.10, solange Advisory-Blocks nicht bewusst behandelt sind.
 - Keine produktiven `/api`-Aenderungen ohne Contract-Test und Freigabe.
 - Keine Token-/URL-Verhaltensaenderung ohne Security-Freigabe.
+- Anleitungen beschreiben Erstinstallation, Bootstrap, Staging-Abnahme und Recovery, nicht Bestandsaktualisierung.
 
 ## Empfohlene Folge-Reihenfolge
 
@@ -41,7 +42,7 @@ Diese Notizen fassen den aktuellen Modernisierungsstand zusammen und definieren 
 6. PR19: Laravel 10/11 Bridge Hop.
 7. PR20: Final Laravel Target Hop and Frontend/Admin Build Finish.
 
-## Vor jedem Upgrade-PR
+## Vor jedem Track-PR
 
 ```bash
 git checkout master
@@ -51,10 +52,10 @@ composer install --dry-run --no-scripts --no-interaction
 vendor/bin/phpunit tests/Feature/VimpContractTest.php tests/Feature/HealthMetricsTest.php tests/Feature/WorkerGuardrailsTest.php tests/Feature/StatusSchemaTest.php tests/Feature/SecurityHardeningTest.php
 ```
 
-## Nach jedem Upgrade-PR
+## Nach jedem Track-PR
 
 - GitHub Actions abwarten.
 - `docs/FRAMEWORK_UPGRADE_STAGE_1.md` aktualisieren, wenn Framework-/Runtime-Baseline betroffen ist.
-- `docs/RELEASE_CHECKLIST.md` fuer Staging ausfuellen.
-- VIMP-Staging-Test dokumentieren.
+- `docs/RELEASE_CHECKLIST.md` fuer Clean-Install-Staging ausfuellen.
+- VIMP-Staging-Test im Neuinstallations-Setup dokumentieren.
 - Composer Audit Ergebnis dokumentieren, inklusive bewusst akzeptierter Restrisiken.

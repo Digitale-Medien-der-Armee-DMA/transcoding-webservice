@@ -39,7 +39,7 @@ Composer-Constraints fuer PR9:
 
 ## Naechster Composer-Hop
 
-Die naechsten Hops laufen als zusammengefasster Track in `docs/ITERATIVE_UPGRADE_TRACK.md`. Die Reihenfolge bleibt iterativ, aber PR14-20 werden als ein gemeinsamer Modernisierungsschritt geplant.
+Die naechsten Hops laufen als zusammengefasster Clean-Install-Track in `docs/ITERATIVE_UPGRADE_TRACK.md`. Die Reihenfolge bleibt iterativ, aber PR14-20 werden als ein gemeinsamer Modernisierungsschritt fuer eine Neuinstallation geplant.
 
 Naechste Dependency- und Runtime-Gates:
 

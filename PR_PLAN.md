@@ -2,19 +2,20 @@
 
 Stand: 2026-06-23. Alle PRs sind Vorschlaege und brauchen Freigabe vor Implementierung.
 
-Hinweis zum Abarbeitungsstand: Nach PR9 wurde ein Admin-Security-Hardening als PR10 eingeschoben. Die urspruenglich geplante Staging-/Cutover-Vorbereitung wurde als PR11 umgesetzt. Die urspruenglich geplante Operations-/Zabbix-Dokumentation wird deshalb als PR12 umgesetzt.
+Hinweis zum Abarbeitungsstand: Nach PR9 wurde ein Admin-Security-Hardening als PR10 eingeschoben. Die urspruenglich geplante Staging-/Inbetriebnahme-Vorbereitung wurde als PR11 umgesetzt. Die urspruenglich geplante Operations-/Zabbix-Dokumentation wird deshalb als PR12 umgesetzt.
 
 Naechster Admin-Blocker: ADR 0001 dokumentiert den schrittweisen Ersatz von `encore/laravel-admin`; neue Admin-Funktionen sollen nicht mehr auf `laravel-admin` gebaut werden.
 
-## Aktueller Track: PR14-20 Admin- und Laravel-Hops
+## Aktueller Track: PR14-20 Clean Install, Admin- und Laravel-Hops
 
 Status: zusammengefasst in `docs/ITERATIVE_UPGRADE_TRACK.md`.
 
 Ziel:
 
-- Die naechsten sieben PRs als einen groesseren, iterativen Upgrade-Track abarbeiten.
+- Die naechsten sieben PRs als einen groesseren, iterativen Clean-Install-Track abarbeiten.
 - Zuerst `laravel-admin` funktional ersetzen und entfernen.
 - Danach PHP-8-Readiness, Runtime-Hop und Laravel-Zwischenhops bis zum final freigegebenen Ziel ausfuehren.
+- Installations- und Betriebsanleitungen auf Neuinstallation, Bootstrap und Abnahme ausrichten, nicht auf Aktualisierung einer bestehenden Installation.
 
 Checkpoints:
 
@@ -34,6 +35,7 @@ Guardrails:
 - VIMP Contract-Tests bleiben vor und nach jedem Checkpoint Pflicht.
 - Keine Admin-Uploads, keine ungeplanten `/api`-Aenderungen, keine Token-/URL-Verhaltensaenderung ohne Freigabe.
 - Zielversionen fuer PHP und finales Laravel-Ziel muessen vor PR18/PR20 explizit freigegeben sein.
+- Keine Daten- oder Runtime-Migration einer bestehenden Installation einplanen, ausser ein spaeterer Auftrag verlangt das explizit.
 
 ## PR 0: Audit-Artefakte
 
@@ -132,7 +134,7 @@ Inhalt:
 - GPU-Free-VRAM-Guardrail vor Jobstart, falls technisch belastbar.
 - Saubere Retry-/Backoff-/Failure-Dokumentation.
 
-## PR 6: Status Schema Migration
+## PR 6: Status Schema Baseline
 
 Ziel:
 
@@ -140,14 +142,14 @@ Ziel:
 
 Inhalt:
 
-- Migration auf Integer-Status oder neue Statusspalte.
-- Datenmigration fuer bestehende Werte.
+- Schema auf Integer-Status oder neue Statusspalte ausrichten.
+- Clean-Install-Seed/Bootstrap fuer neue Statuswerte pruefen.
 - Backward-kompatible Model-Konstanten.
 - Tests fuer Status, Failed-Jobs und Admin-Anzeige.
 
 Risiko:
 
-- Datenmigration. Nur nach Staging-Backup und Probelauf.
+- Keine Bestandsdatenmigration erforderlich; Risiko liegt in Schema-/Code-Kompatibilitaet und Tests.
 
 ## PR 7: Security Hardening Without Breaking VIMP
 
@@ -215,16 +217,16 @@ Inhalt:
 - `docs/UPGRADE_NOTES.md`
 - finales Zabbix-Template oder genaue Item-/Trigger-Dokumentation.
 
-## PR 11: Staging Hardening and Production Cutover Prep
+## PR 11: Staging Hardening and Production Clean-Install Prep
 
 Ziel:
 
-- Downtime unter 30 Minuten realistisch absichern.
+- Erstinstallation, Abnahme und Recovery realistisch absichern.
 
 Inhalt:
 
 - Staging-Runbook.
-- Rollback-Plan.
+- Recovery-/Rebuild-Plan.
 - Lasttest-Dokumentation.
 - GPU/VRAM-Beobachtung.
 - Release-Checkliste.
