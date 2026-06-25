@@ -227,3 +227,13 @@ Vorgehen:
   - DB-Migrationen nur vorwaerts, wenn rollbackfaehig oder per Backup abgesichert.
 
 PR11 konkretisiert die Cutover-Freigabe in `docs/RELEASE_CHECKLIST.md` und den Rueckweg in `docs/ROLLBACK_PLAN.md`.
+
+PR12 konkretisiert Installation, Deployment, VIMP-Staging, Zabbix, laufenden Betrieb, Troubleshooting und Upgrade-Notizen:
+
+- `docs/INSTALL.md`
+- `docs/DEPLOYMENT.md`
+- `docs/VIMP_STAGING_TEST.md`
+- `docs/ZABBIX.md`
+- `docs/OPERATIONS.md`
+- `docs/TROUBLESHOOTING.md`
+- `docs/UPGRADE_NOTES.md`
