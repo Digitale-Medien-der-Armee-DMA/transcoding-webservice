@@ -1,24 +1,41 @@
 # Install
 
-Stand: 2026-06-25
+Status: 2026-06-25
 
-Diese Anleitung beschreibt die Installation des modernisierten Stacks auf einem internen Host. Sie ist fuer Staging und Produktion gedacht und setzt voraus, dass die VIMP-API-Kompatibilitaet ueber die Contract-Tests erhalten bleibt.
+This guide describes a clean installation of the Dockerized Transcoding Webservice. It does not describe an upgrade of an existing installation.
 
-## Voraussetzungen
+## What Works Out Of The Box
 
-- Linux-Host, bevorzugt Ubuntu 24.04 LTS fuer den Zielbetrieb.
-- Docker Engine mit Compose Plugin.
+The repository contains a production-oriented Compose stack that can be validated, built, and started once the required environment values are supplied.
+
+It is not zero configuration. A clean install still requires:
+
+- Docker Engine and the Docker Compose plugin.
+- A fresh external MySQL/MariaDB database for production.
+- A `.env` file derived from `.env.example`.
+- A generated `APP_KEY`.
+- Redis, either the bundled `redis` service or an external Redis endpoint.
+- NVIDIA host driver and NVIDIA Container Toolkit if the GPU worker is started.
+- A reverse proxy if the service should be exposed beyond the local `HTTP_BIND`.
+
+The production Compose file does not start a database container. `compose.dev.yaml` is only for local or isolated staging use.
+
+## Host Requirements
+
+Recommended production target:
+
+- Ubuntu 24.04 LTS.
+- Docker Engine with Compose plugin.
 - Git.
-- Zugriff auf das private Repository.
-- Externe MySQL/MariaDB-Datenbank fuer Produktion.
-- Redis, entweder als Compose-Service aus `compose.yaml` oder als externer Redis-Dienst.
-- Fuer GPU-Transcoding: NVIDIA-Treiber auf dem Host und NVIDIA Container Toolkit.
+- Access to this repository.
+- External MySQL/MariaDB.
+- For GPU transcoding: NVIDIA driver on the host and NVIDIA Container Toolkit.
 
-Nicht im Container installieren:
+Do not install inside the containers:
 
-- NVIDIA Host-Treiber.
-- Produktive Datenbank als App-Container.
-- Secrets im Repository.
+- NVIDIA host drivers.
+- Production database packages.
+- Secrets or local-only credentials.
 
 ## Repository
 
@@ -26,21 +43,20 @@ Nicht im Container installieren:
 git clone <repo-url> transcoding-webservice
 cd transcoding-webservice
 git checkout master
-```
-
-Fuer Releases immer einen konkreten Commit dokumentieren:
-
-```bash
 git rev-parse HEAD
 ```
 
+Record the commit SHA for the installation notes.
+
 ## Environment
+
+Create the environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Pflichtwerte setzen:
+Set at least:
 
 ```env
 APP_ENV=production
@@ -49,38 +65,43 @@ APP_KEY=
 APP_URL=http://transcoding-webservice.internal
 HTTP_BIND=127.0.0.1:8080
 
+DB_CONNECTION=mysql
 DB_HOST=db.internal
 DB_PORT=3306
 DB_DATABASE=transcoding_webservice
 DB_USERNAME=transcoding_webservice
-DB_PASSWORD=
+DB_PASSWORD=<set-me>
 
 QUEUE_CONNECTION=redis
 REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_PASSWORD=null
+
+ADMIN_UPLOADS_ENABLED=false
+SECURITY_LOG_SCRUBBING_ENABLED=true
+HEALTH_REDIS_REQUIRED=true
 ```
 
-`APP_KEY` einmalig erzeugen, wenn noch keiner existiert:
+Generate the application key:
 
 ```bash
 docker compose --env-file .env -f compose.yaml run --rm app php artisan key:generate --show
 ```
 
-Den ausgegebenen Wert in `.env` eintragen.
+Copy the returned value into `APP_KEY` in `.env`.
 
 ## Security Defaults
 
-Diese Defaults bleiben fuer Produktion konservativ:
+Keep these defaults for production unless a later approved change says otherwise:
 
 ```env
 APP_DEBUG=false
-SECURITY_LOG_SCRUBBING_ENABLED=true
 ADMIN_UPLOADS_ENABLED=false
+SECURITY_LOG_SCRUBBING_ENABLED=true
 HEALTH_REDIS_REQUIRED=true
 ```
 
-Source-URL-Allowlist nur nach VIMP-Abstimmung aktivieren:
+Source URL allowlisting is optional and must be coordinated with VIMP hostnames or IP ranges:
 
 ```env
 SECURITY_SOURCE_URL_ALLOWLIST_ENABLED=false
@@ -88,14 +109,26 @@ SECURITY_SOURCE_URL_ALLOWED_HOSTS=
 SECURITY_SOURCE_URL_ALLOW_USER_HOST=true
 ```
 
-## Build
+## Validate Compose
 
 ```bash
 docker compose --env-file .env -f compose.yaml config >/tmp/transcoding-compose.yaml
+docker compose --profile smoke --profile gpu-smoke --env-file .env -f compose.yaml config >/tmp/transcoding-compose-smoke.yaml
+```
+
+For isolated development or staging with a local database:
+
+```bash
+docker compose --env-file .env -f compose.yaml -f compose.dev.yaml config >/tmp/transcoding-compose-dev.yaml
+```
+
+## Build
+
+```bash
 docker compose --env-file .env -f compose.yaml build
 ```
 
-Oder ueber Make:
+Or:
 
 ```bash
 make build
@@ -103,18 +136,31 @@ make build
 
 ## Start
 
+On the intended GPU-capable production host:
+
 ```bash
 docker compose --env-file .env -f compose.yaml up -d
 docker compose --env-file .env -f compose.yaml ps
 ```
 
-Migrationen ausfuehren:
+For a CPU-only bootstrap or documentation validation, start only non-GPU services:
+
+```bash
+docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download
+docker compose --env-file .env -f compose.yaml ps
+```
+
+## Fresh Database Bootstrap
+
+Run migrations against the fresh database:
 
 ```bash
 docker compose --env-file .env -f compose.yaml exec app php artisan migrate --force
 ```
 
-## Healthcheck
+If the release requires seeders or bootstrap commands, run them only after reviewing the release notes and confirming that production credentials are ready. Default admin credentials must be rotated or replaced before production use.
+
+## Health Check
 
 ```bash
 curl -fsS "$APP_URL/internal/health/live"
@@ -122,34 +168,33 @@ curl -fsS "$APP_URL/internal/health/ready"
 curl -fsS "$APP_URL/internal/metrics"
 ```
 
-Erwartung:
+Expected:
 
-- Live: HTTP 200 und `status=ok`.
-- Ready: HTTP 200 und `status=ok`.
-- Metrics: JSON mit `queues`, `workers`, `storage`, `transcoding` und `runtime`.
+- Live: HTTP 200 with `status=ok`.
+- Ready: HTTP 200 with `status=ok`.
+- Metrics: JSON with queue, worker, storage, runtime, and transcoding sections.
 
-## GPU Smoke
+## FFmpeg Smoke
 
-CPU-Smoke:
+CPU smoke:
 
 ```bash
 docker compose --env-file .env --profile smoke -f compose.yaml run --rm ffmpeg-smoke-cpu
 ```
 
-GPU-Smoke auf NVIDIA-Host:
+GPU smoke on the NVIDIA target host:
 
 ```bash
 docker compose --env-file .env --profile gpu-smoke -f compose.yaml run --rm ffmpeg-smoke-gpu
 ```
 
-Ein fehlender GPU-Smoke blockiert GPU-Produktionsbetrieb.
+GPU production use is blocked until the GPU smoke test passes on the target host.
 
-## Dev-/Staging-Override
+## Next Steps
 
-Nur fuer lokale oder isolierte Staging-Umgebungen:
+After installation:
 
-```bash
-docker compose --env-file .env -f compose.yaml -f compose.dev.yaml up -d --build
-```
-
-Der Override startet eine lokale MariaDB. Fuer Produktion bleibt die Datenbank extern.
+1. Fill out `docs/RELEASE_CHECKLIST.md`.
+2. Run `docs/STAGING_RUNBOOK.md` against VIMP staging.
+3. Configure monitoring from `docs/ZABBIX.md`.
+4. Keep `docs/ROLLBACK_PLAN.md` available as the clean-install recovery plan.

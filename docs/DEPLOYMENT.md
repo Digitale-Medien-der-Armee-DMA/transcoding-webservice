@@ -1,77 +1,106 @@
 # Deployment
 
-Stand: 2026-06-25
+Status: 2026-06-25
 
-Diese Anleitung beschreibt ein konservatives Deployment in den internen Produktionsbetrieb. Der Ablauf setzt voraus, dass `docs/STAGING_RUNBOOK.md`, `docs/ROLLBACK_PLAN.md` und `docs/RELEASE_CHECKLIST.md` vor dem Cutover durchgearbeitet wurden.
+This guide describes first deployment of a clean installation. It assumes there is no existing production installation to update or data-migrate.
 
-## Deployment-Prinzip
+Before production acceptance, complete:
 
-- Kleine PRs, jeweils von aktuellem `master`.
-- CI muss vor Merge gruen sein.
-- Nach Merge: `master` auf dem Zielhost per Fast-Forward aktualisieren.
-- Keine Secrets committen.
-- Keine produktive Datenbank im Production-Compose.
-- GPU-Zugriff nur im `worker-video-gpu` Service.
+- `docs/INSTALL.md`
+- `docs/STAGING_RUNBOOK.md`
+- `docs/RELEASE_CHECKLIST.md`
+- `docs/ROLLBACK_PLAN.md`
 
-## Vorbereitung
+## Deployment Principles
 
-Vor dem Wartungsfenster:
+- Deploy from a known commit on `master`.
+- GitHub Actions must be green for the commit.
+- Secrets stay in `.env` on the target host and are not committed.
+- Production uses an external database.
+- The bundled Redis service may be used unless an external Redis endpoint is provided.
+- GPU access is limited to `worker-video-gpu`.
+- Admin uploads remain disabled.
+
+## Preflight
+
+On the target host:
 
 ```bash
 git fetch origin master
-git log --oneline -5 origin/master
+git checkout master
+git pull --ff-only
+git rev-parse HEAD
+```
+
+Validate configuration:
+
+```bash
 docker compose --env-file .env -f compose.yaml config >/tmp/transcoding-compose-production.yaml
+docker compose --profile smoke --profile gpu-smoke --env-file .env -f compose.yaml config >/tmp/transcoding-compose-smoke.yaml
+```
+
+Record:
+
+- Git commit SHA.
+- Image tag or build timestamp.
+- Database host and database name, without passwords.
+- Redis target.
+- Reverse proxy target.
+- `APP_URL` and `HTTP_BIND`.
+- GPU model and driver version, if GPU production is planned.
+
+## Build
+
+```bash
 docker compose --env-file .env -f compose.yaml build
 docker compose --env-file .env --profile smoke -f compose.yaml build ffmpeg-smoke-cpu
 ```
 
-Dokumentieren:
-
-- Ziel-Commit.
-- Image-Tags.
-- Datenbank-Backup-Zeitpunkt.
-- Redis-Ziel.
-- Reverse-Proxy-Ziel.
-- Rollback-Commit oder vorheriger Image-Tag.
-
-## Wartungsfenster
-
-1. VIMP-Encoding pausieren oder neue Transcoding-Jobs blockieren.
-2. Aktive Queues beobachten:
+On a GPU target host:
 
 ```bash
-curl -fsS "$APP_URL/internal/metrics"
+docker compose --env-file .env --profile gpu-smoke -f compose.yaml build ffmpeg-smoke-gpu
+```
+
+## Start
+
+For the full GPU-capable production stack:
+
+```bash
+docker compose --env-file .env -f compose.yaml up -d
 docker compose --env-file .env -f compose.yaml ps
 ```
 
-3. Optional Worker drainen:
+For CPU-only bootstrap:
 
 ```bash
-docker compose --env-file .env -f compose.yaml stop scheduler
-docker compose --env-file .env -f compose.yaml stop worker-download worker-video-gpu
+docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download
+docker compose --env-file .env -f compose.yaml ps
 ```
 
-4. Code aktualisieren:
+## Fresh Database Setup
 
-```bash
-git checkout master
-git pull --ff-only
-```
-
-5. Stack bauen und starten:
-
-```bash
-docker compose --env-file .env -f compose.yaml build
-docker compose --env-file .env -f compose.yaml up -d
-```
-
-6. Migrationen:
+Run migrations against the fresh database:
 
 ```bash
 docker compose --env-file .env -f compose.yaml exec app php artisan migrate --force
 ```
 
-7. Health und Readiness:
+Run release-specific seed/bootstrap commands only when documented for the current release. Do not leave default admin credentials in production.
+
+## Reverse Proxy
+
+`web` binds to:
+
+```env
+HTTP_BIND=127.0.0.1:8080
+```
+
+The external reverse proxy should route to that host port. TLS, LAN exposure, authentication layers, and firewall policy are outside the Compose stack and must be handled by the platform.
+
+## Acceptance Checks
+
+Health:
 
 ```bash
 curl -fsS "$APP_URL/internal/health/live"
@@ -79,25 +108,7 @@ curl -fsS "$APP_URL/internal/health/ready"
 curl -fsS "$APP_URL/internal/metrics"
 ```
 
-8. Worker/Scheduler aktivieren, falls vorher gestoppt:
-
-```bash
-docker compose --env-file .env -f compose.yaml up -d worker-download worker-video-gpu scheduler
-```
-
-## Reverse Proxy
-
-`web` bindet standardmaessig an:
-
-```env
-HTTP_BIND=127.0.0.1:8080
-```
-
-Der externe Reverse Proxy soll nur diesen Host-Port erreichen. TLS, LAN-Freigabe und Zugriffsschutz liegen ausserhalb dieses Compose-Stacks.
-
-## Post-Deployment
-
-Direkt nach Deployment:
+Containers:
 
 ```bash
 docker compose --env-file .env -f compose.yaml ps
@@ -106,15 +117,30 @@ docker compose --env-file .env -f compose.yaml logs --tail=200 worker-download
 docker compose --env-file .env -f compose.yaml logs --tail=200 worker-video-gpu
 ```
 
-Pruefen:
+CPU smoke:
 
-- Ready-Health bleibt gruen.
-- Queue-Laengen normalisieren sich.
-- Worker sind nicht stale.
-- VIMP-Testjob erzeugt Callback.
-- Keine Tokens oder Authorization-Werte in Logs.
-- GPU/VRAM-Werte liegen im erwarteten Bereich.
+```bash
+docker compose --env-file .env --profile smoke -f compose.yaml run --rm ffmpeg-smoke-cpu
+```
 
-## Rollback
+GPU smoke:
 
-Bei blockierenden Fehlern nicht im Wartungsfenster improvisieren. `docs/ROLLBACK_PLAN.md` ausfuehren und danach die Ursache in einem Folge-PR isolieren.
+```bash
+docker compose --env-file .env --profile gpu-smoke -f compose.yaml run --rm ffmpeg-smoke-gpu
+```
+
+Production is accepted only when:
+
+- Ready health is green.
+- Metrics expose DB, queue, worker, storage, and FFmpeg signals.
+- Workers and scheduler are running.
+- CPU smoke passes.
+- GPU smoke passes if GPU production is planned.
+- VIMP staging flow passes.
+- No API tokens or authorization values appear in logs.
+
+## Recovery
+
+For a clean install, recovery normally means rebuilding the stack from the known commit and recreating the fresh database or volumes if acceptance fails before production use.
+
+Do not improvise on the target host. Follow `docs/ROLLBACK_PLAN.md`, document the failure, and fix the cause in a follow-up PR.

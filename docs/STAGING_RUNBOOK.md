@@ -1,18 +1,19 @@
 # Staging Runbook
 
-Stand: 2026-06-24
+Status: 2026-06-25
 
-Dieses Runbook beschreibt den Staging-Probelauf vor einem Produktions-Cutover. Ziel ist ein reproduzierbarer Nachweis, dass VIMP-Vertrag, Queue-Verhalten, FFmpeg/GPU-Pfad, Healthchecks und Betriebsmetriken zusammen funktionieren, bevor ein Produktionsfenster freigegeben wird.
+This runbook verifies a clean installation before production acceptance. It proves that the VIMP contract, queue behavior, FFmpeg/GPU path, health checks, and operational metrics work together.
 
-## Voraussetzungen
+## Preconditions
 
-- Branch basiert auf dem aktuellen `master`.
-- GitHub Actions fuer den geplanten Release-Branch sind gruen.
-- Staging nutzt eine Kopie oder leere Instanz der Produktionsstruktur mit externer Datenbank oder dokumentiertem Dev-Override.
-- `.env` ist aus `.env.example` erstellt und enthaelt keine Produktiv-Secrets im Repository.
-- `APP_KEY`, DB-Zugang, Redis-Ziel, `APP_URL`, `HTTP_BIND` und VIMP-Test-User sind gesetzt.
-- `ADMIN_UPLOADS_ENABLED=false` bleibt Standard.
-- Zielhost hat Docker Compose, NVIDIA-Treiber und NVIDIA Container Toolkit, falls GPU-Staging Teil des Laufs ist.
+- Branch or release commit is based on current `master`.
+- GitHub Actions are green for the release commit.
+- Staging uses a fresh database or the documented dev override.
+- `.env` is created from `.env.example` and contains no committed secrets.
+- `APP_KEY`, DB credentials, Redis target, `APP_URL`, `HTTP_BIND`, and VIMP test user/token are set.
+- `ADMIN_UPLOADS_ENABLED=false`.
+- Target host has Docker Compose.
+- GPU staging requires NVIDIA host driver and NVIDIA Container Toolkit.
 
 ## Preflight
 
@@ -22,30 +23,43 @@ docker compose --env-file .env -f compose.yaml config >/tmp/transcoding-compose-
 docker compose --profile smoke --profile gpu-smoke --env-file .env -f compose.yaml config >/tmp/transcoding-compose-smoke.yaml
 ```
 
-Wenn Staging eine lokale Datenbank nutzt:
+If staging uses a local database:
 
 ```bash
 docker compose --env-file .env -f compose.yaml -f compose.dev.yaml config >/tmp/transcoding-compose-staging.yaml
 ```
 
-Vor dem Start dokumentieren:
+Record before starting:
 
-- Git-Commit-SHA.
-- Image-Tags oder Build-Zeitpunkt.
-- DB-Host und Datenbankname, keine Passwoerter.
-- Redis-Host.
-- VIMP-Staging-URL.
-- GPU-Modell, Treiberversion und `nvidia-smi` Ausgabe.
+- Git commit SHA.
+- Image tags or build timestamp.
+- DB host and database name, without passwords.
+- Redis host.
+- VIMP staging URL.
+- GPU model, driver version, and `nvidia-smi` output, if applicable.
 
-## Build und Start
+## Build And Start
 
 ```bash
-make build
-make up
-make migrate
+docker compose --env-file .env -f compose.yaml build
+docker compose --env-file .env -f compose.yaml up -d
 ```
 
-Nach dem Start pruefen:
+For CPU-only staging:
+
+```bash
+docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download
+```
+
+Run migrations against the fresh database:
+
+```bash
+docker compose --env-file .env -f compose.yaml exec app php artisan migrate --force
+```
+
+Run release-specific bootstrap/seed commands only if documented for the current release.
+
+## Health
 
 ```bash
 docker compose --env-file .env -f compose.yaml ps
@@ -54,75 +68,75 @@ curl -fsS "$APP_URL/internal/health/ready"
 curl -fsS "$APP_URL/internal/metrics"
 ```
 
-Erwartung:
+Expected:
 
-- `web`, `app`, `redis`, `worker-download`, `worker-video-gpu` und `scheduler` laufen.
-- Live-Health ist `ok`.
-- Ready-Health ist `ok` oder zeigt nur bewusst akzeptierte Staging-Abweichungen.
-- Metrics enthalten DB-, Queue-, Storage-, Worker- und FFmpeg-Signale.
+- Required containers are running.
+- Live health is `ok`.
+- Ready health is `ok` or has only explicitly accepted staging deviations.
+- Metrics contain DB, queue, storage, worker, runtime, and FFmpeg signals.
 
 ## FFmpeg Smoke
 
-CPU-Smoke:
+CPU smoke:
 
 ```bash
-make ffmpeg-cpu-smoke
+docker compose --env-file .env --profile smoke -f compose.yaml run --rm ffmpeg-smoke-cpu
 ```
 
-GPU-Smoke auf NVIDIA-Staging-Host:
+GPU smoke on an NVIDIA staging host:
 
 ```bash
-make ffmpeg-gpu-smoke
+docker compose --env-file .env --profile gpu-smoke -f compose.yaml run --rm ffmpeg-smoke-gpu
 ```
 
-Der GPU-Smoke ist nur bestanden, wenn `nvidia-smi`, NVENC-Encoding und CUDA-Decode erfolgreich sind. Ein fehlender GPU-Smoke blockiert den Produktions-Cutover fuer GPU-Transcoding, auch wenn die PHP-Tests gruen sind.
+The GPU smoke test passes only if `nvidia-smi`, NVENC encoding, and CUDA decode succeed. A failing GPU smoke blocks GPU production use even when PHP tests are green.
 
-## VIMP-Staging-Flow
+## VIMP Staging Flow
 
-1. VIMP-Staging-User mit eigenem API-Token anlegen.
-2. Webservice-User mit VIMP-Staging-URL und Token konfigurieren.
-3. Kleines MP4 ueber `/api/transcode` starten.
-4. Queue-Fortschritt in `/internal/metrics` beobachten.
-5. Callback in VIMP-Staging pruefen.
-6. `/api/status/{mediakey}` gegen erwarteten Status pruefen.
-7. Download-Finished-Endpoint mit erzeugtem Dateinamen pruefen.
-8. Delete-Flow gegen den Test-Mediakey pruefen.
+1. Create or select a VIMP staging user with a dedicated API token.
+2. Create the matching webservice user/configuration with VIMP staging URL and token.
+3. Submit a small MP4 through `/api/transcode`.
+4. Observe queue progress in `/internal/metrics`.
+5. Verify callback receipt in VIMP staging.
+6. Query `/api/status/{mediakey}` and compare with expected status.
+7. Call the download-finished endpoint with the generated filename.
+8. Test delete flow for the test mediakey.
 
-Akzeptanz:
+Acceptance:
 
-- Response-Formate bleiben VIMP-kompatibel.
-- Download- und Videojobs laufen auf getrennten Queues.
-- Fertige Artefakte liegen auf dem erwarteten Storage-Volume.
-- VIMP erhaelt genau die erwarteten Callback-Felder.
-- Kein API-Token oder Authorization-Header erscheint in Logs.
+- Response formats remain VIMP-compatible.
+- Download and video jobs use separate queues.
+- Generated artifacts are stored in the expected volume.
+- VIMP receives the expected callback fields.
+- No API token or authorization header appears in logs.
 
-## Beobachtung waehrend Staging
+## Observation During Staging
 
-Mindestens diese Werte protokollieren:
+Record at least:
 
-- Anzahl wartender Jobs pro Queue.
-- Worker-Staleness.
-- Transcode-Dauer je Profil.
-- Download-Dauer und Dateigroesse.
-- CPU-, RAM- und Disk-Auslastung.
-- GPU Utilization, Encoder Utilization und VRAM frei.
-- Fehlerzaehler aus Laravel-Logs und Container-Restarts.
+- Waiting jobs per queue.
+- Worker staleness.
+- Transcode duration per profile.
+- Download duration and file size.
+- CPU, RAM, and disk usage.
+- GPU utilization, encoder utilization, and free VRAM.
+- Laravel log errors and container restarts.
 
-GPU-Abfrage:
+GPU query:
 
 ```bash
 nvidia-smi --query-gpu=timestamp,name,driver_version,utilization.gpu,utilization.encoder,memory.total,memory.used,memory.free --format=csv
 ```
 
-## Exit-Kriterien
+## Exit Criteria
 
-Staging ist bestanden, wenn:
+Staging passes when:
 
-- GitHub Actions gruen sind.
-- Compose-Config und Smoke-Scripts validiert sind.
-- CPU-Smoke bestanden ist.
-- GPU-Smoke auf Zielklasse bestanden ist, wenn GPU-Produktion geplant ist.
-- VIMP-Staging-Flow fuer mindestens einen erfolgreichen Transcode bestanden ist.
-- Rollback-Plan gegen dieselbe Staging-Umgebung geprueft oder trocken durchgespielt ist.
-- Lasttest-Plan hat keine Cutover-blockierenden Befunde.
-- Release-Checkliste ist vollstaendig ausgefuellt.
+- GitHub Actions are green.
+- Compose config and smoke scripts validate.
+- CPU smoke passes.
+- GPU smoke passes on the target host class if GPU production is planned.
+- VIMP staging flow passes for at least one successful transcode.
+- Recovery/rebuild steps are reviewed for the same staging environment.
+- Load test findings do not block production acceptance.
+- `docs/RELEASE_CHECKLIST.md` is completed.

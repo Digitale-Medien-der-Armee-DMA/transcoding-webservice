@@ -1,109 +1,123 @@
-# Rollback Plan
+# Recovery Plan
 
-Stand: 2026-06-24
+Status: 2026-06-25
 
-Dieser Plan beschreibt den Rueckweg fuer den Produktions-Cutover. Er ist konservativ: lieber frueh zur letzten bekannten Version zurueck als waehrend eines instabilen Transcoding-Fensters weiter zu debuggen.
+This plan describes recovery for a clean-install deployment. There is no existing installation that must be restored during the current project phase.
 
-## Rollback-Ausloeser
+The file keeps its historical name because other documents link to `docs/ROLLBACK_PLAN.md`.
 
-Rollback wird gestartet, wenn einer dieser Punkte eintritt:
+## Recovery Triggers
 
-- VIMP kann keine neuen Transcodes starten.
-- Mehrere Jobs bleiben ohne Fortschritt in `download` oder `video` haengen.
-- Ready-Health bleibt laenger als 5 Minuten rot, ohne bekannte Staging-Abweichung.
-- GPU-Worker startet Jobs, aber FFmpeg/NVENC faellt reproduzierbar aus.
-- Callbacks an VIMP fehlen oder enthalten falsche Artefakt-URLs.
-- Fehlerquote im Staging-/Produktionsfenster uebersteigt die freigegebene Schwelle.
-- DB-Migration kann nicht vollstaendig oder nicht verifiziert abgeschlossen werden.
+Start recovery when one of these conditions occurs during staging or production acceptance:
 
-## Vorbereitete Rollback-Artefakte
+- VIMP cannot submit new transcode jobs.
+- Jobs remain stuck in `download` or `video`.
+- Ready health stays red for more than 5 minutes without an accepted explanation.
+- GPU worker starts jobs but FFmpeg/NVENC fails reproducibly.
+- Callbacks to VIMP are missing or contain wrong artifact URLs.
+- Logs expose API tokens or authorization values.
+- Fresh database bootstrap cannot be completed or verified.
 
-Vor Cutover muessen vorhanden sein:
+## Required Recovery Inputs
 
-- Letzter produktiver Git-Commit oder Image-Tag.
-- Datenbank-Backup unmittelbar vor Migration/Cutover.
-- Kopie der produktiven `.env` ausserhalb des Repositories.
-- Aktuelle Reverse-Proxy-Konfiguration.
-- Liste aktiver Worker-Container und Queue-Namen.
-- Pfade oder Volume-Namen fuer `uploaded-media`, `converted-media`, `app-storage` und Redis.
+Before production acceptance, record:
 
-## Worker Drain
+- Approved Git commit SHA.
+- Built image tags or build timestamp.
+- Copy of the target `.env` outside the repository.
+- Reverse proxy configuration.
+- DB host and database name, without passwords.
+- Redis target.
+- Volume names for `uploaded-media`, `converted-media`, `app-storage`, and Redis.
+- Whether GPU production is enabled.
 
-Vor einem kontrollierten Rollback keine neuen Videojobs starten:
+## Stop Workers
+
+Before recovery, prevent new work:
 
 ```bash
 docker compose --env-file .env -f compose.yaml stop scheduler
 docker compose --env-file .env -f compose.yaml stop worker-download worker-video-gpu
 ```
 
-Wenn Jobs aktiv sind, Entscheidung dokumentieren:
+If jobs are active, document whether they are allowed to finish or are intentionally interrupted.
 
-- Fertig laufen lassen, wenn VIMP-Callbacks stabil sind und Zeitfenster reicht.
-- Abbrechen, wenn Outputs fehlerhaft sind oder GPU/Storage instabil ist.
+## Rebuild From Known Commit
 
-## App-Rollback
-
-Zur letzten freigegebenen Version wechseln:
+Return to the approved commit:
 
 ```bash
 git fetch origin master
-git checkout <last-known-good-sha>
-docker compose --env-file .env -f compose.yaml build app web
-docker compose --env-file .env -f compose.yaml up -d app web
+git checkout <approved-sha>
+docker compose --env-file .env -f compose.yaml build
+docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download
 ```
 
-Danach:
+On a GPU host, start the GPU worker only after smoke validation:
+
+```bash
+docker compose --env-file .env --profile gpu-smoke -f compose.yaml run --rm ffmpeg-smoke-gpu
+docker compose --env-file .env -f compose.yaml up -d worker-video-gpu
+```
+
+Check:
 
 ```bash
 curl -fsS "$APP_URL/internal/health/live"
 curl -fsS "$APP_URL/internal/health/ready"
+curl -fsS "$APP_URL/internal/metrics"
 ```
 
-Erst wenn Web und App gesund sind, Worker wieder starten:
+## Fresh Database Recovery
+
+If acceptance fails before production use, the preferred recovery is to recreate the fresh database and rerun bootstrap:
+
+1. Stop scheduler and workers.
+2. Stop web access at the reverse proxy or keep it internal-only.
+3. Recreate the fresh database.
+4. Run migrations:
+
+   ```bash
+   docker compose --env-file .env -f compose.yaml exec app php artisan migrate --force
+   ```
+
+5. Rerun documented release-specific bootstrap/seed commands, if any.
+6. Recreate controlled admin credentials and VIMP user/API token.
+7. Run health checks and the VIMP staging flow.
+
+Do not plan reverse data migrations unless a later production data-retention requirement explicitly adds them.
+
+## Volume Recovery
+
+For a failed clean-install acceptance, volumes can be recreated if no productive VIMP jobs must be preserved:
 
 ```bash
-docker compose --env-file .env -f compose.yaml up -d worker-download worker-video-gpu scheduler
+docker compose --env-file .env -f compose.yaml down
+docker volume ls | grep transcoding-webservice
 ```
 
-## Datenbank-Rollback
+Only remove volumes after confirming that no required artifacts must be kept. Prefer documenting the exact volume names and operator approval before removal.
 
-Datenbank-Rollback ist nur erlaubt, wenn:
+## Reverse Proxy Recovery
 
-- Vorheriges Backup erfolgreich wiederherstellbar getestet wurde.
-- Keine neuen produktiven Jobs akzeptiert werden.
-- VIMP ueber das Wartungsfenster informiert ist.
+If the stack is unhealthy:
 
-Ablauf:
+1. Remove the new upstream from the reverse proxy or point it to a maintenance page.
+2. Keep the Docker stack internal-only.
+3. Fix and retest in staging before exposing the route again.
 
-1. Scheduler und Worker stoppen.
-2. Webzugriff am Reverse Proxy sperren oder auf Wartungsseite zeigen.
-3. DB aus dem Pre-Cutover-Backup wiederherstellen.
-4. App auf letzten bekannten Commit/Image-Tag zuruecksetzen.
-5. Migrationsstatus pruefen.
-6. Healthchecks ausfuehren.
-7. Einen VIMP-Staging- oder internen Smoke-Flow ausfuehren.
+## After Recovery
 
-## Reverse-Proxy-Rollback
+Document within 30 minutes:
 
-Wenn nur der neue Stack fehlschlaegt, aber die alte App lauffaehig ist:
+- Recovery trigger.
+- Time of failure and recovery.
+- Affected jobs and mediakeys, if any.
+- Commit SHA and image tags.
+- Whether DB or volumes were recreated.
+- Whether VIMP can submit jobs again.
 
-1. Neue Worker stoppen.
-2. Reverse Proxy zur alten Upstream-Adresse zuruecksetzen.
-3. Healthcheck der alten Route pruefen.
-4. VIMP-Testtranscode gegen die alte Route starten.
+Follow-up:
 
-## Nach Rollback
-
-Innerhalb von 30 Minuten dokumentieren:
-
-- Zeitpunkt des Rollbacks.
-- Ausloeser.
-- Betroffene Jobs und Mediakeys.
-- DB-Backup/Restore-Status.
-- Welche Container/Images aktiv sind.
-- Ob VIMP erneut Transcodes senden darf.
-
-Nacharbeit:
-
-- Fehlerursache als Issue oder Folge-PR dokumentieren.
-- Keine erneute Produktivfreigabe ohne bestandenen Staging-Run.
+- Open an issue or follow-up PR for the root cause.
+- Do not accept production use again without a passed staging run.

@@ -1,32 +1,32 @@
 # Operations
 
-Stand: 2026-06-25
+Status: 2026-06-25
 
-Diese Seite beschreibt den laufenden Betrieb des Transcoding Webservice nach Deployment. Sie verweist fuer Installation, Deployment und Cutover auf die spezialisierten Runbooks.
+This page describes day-to-day operation after a clean-install deployment. For first installation and release acceptance, use `docs/INSTALL.md`, `docs/DEPLOYMENT.md`, `docs/STAGING_RUNBOOK.md`, and `docs/RELEASE_CHECKLIST.md`.
 
 ## Services
 
-Production-Compose enthaelt:
+Production Compose contains:
 
-- `app`: PHP-FPM/Laravel Runtime.
-- `web`: nginx Frontend.
-- `worker-download`: verarbeitet Queue `download`.
-- `worker-video-gpu`: verarbeitet Queue `video` und hat GPU-Zugriff.
-- `scheduler`: fuehrt Laravel Scheduler im Minutenloop aus.
-- `redis`: Queue/Cache-Service fuer den Blueprint.
+- `app`: PHP-FPM/Laravel runtime.
+- `web`: nginx frontend.
+- `worker-download`: processes the `download` queue.
+- `worker-video-gpu`: processes the `video` queue and has GPU access.
+- `scheduler`: runs Laravel scheduler every minute.
+- `redis`: Redis queue/cache service.
 
-Keine produktive Datenbank laeuft im Production-Compose. `compose.dev.yaml` ist nur fuer Dev/Staging mit lokaler MariaDB.
+No production database runs in `compose.yaml`. `compose.dev.yaml` is only for local or isolated staging environments.
 
-## Regelmaessige Checks
+## Regular Checks
 
-Alle 5 Minuten oder per Monitoring:
+Every few minutes, preferably through monitoring:
 
 ```bash
 curl -fsS "$APP_URL/internal/health/ready"
 curl -fsS "$APP_URL/internal/metrics"
 ```
 
-Taeglich:
+Daily or after changes:
 
 ```bash
 docker compose --env-file .env -f compose.yaml ps
@@ -35,45 +35,46 @@ docker compose --env-file .env -f compose.yaml logs --tail=200 worker-download
 docker compose --env-file .env -f compose.yaml logs --tail=200 worker-video-gpu
 ```
 
-Auf NVIDIA-Hosts:
+On NVIDIA hosts:
 
 ```bash
 nvidia-smi
 ```
 
-## Queue-Betrieb
+## Queue Operation
 
-Normales Verhalten:
+Expected behavior:
 
-- `download.waiting` steigt kurz nach neuen VIMP-Jobs.
-- `video.waiting` steigt nach erfolgreichen Downloads.
-- `running_jobs` sinkt nach Abschluss wieder auf 0.
-- `workers.stale` bleibt 0.
+- `download.waiting` rises briefly after new VIMP jobs.
+- `video.waiting` rises after successful downloads.
+- `running_jobs` returns to 0 after completion.
+- `workers.stale` stays at 0.
 
-Backlog bewerten:
+Backlog interpretation:
 
-- Download-Backlog deutet auf VIMP-Quelle, Netzwerk, Storage oder DB/Redis hin.
-- Video-Backlog deutet auf GPU/FFmpeg, Profile, Storage oder VRAM-Druck hin.
-- Running ohne Fortschritt deutet auf haengende Worker oder zu lange FFmpeg-Prozesse hin.
+- Download backlog usually points to VIMP source access, network, storage, DB, or Redis.
+- Video backlog usually points to GPU/FFmpeg, profiles, storage, or VRAM pressure.
+- Running jobs without progress usually point to stuck workers or long FFmpeg processes.
 
 ## Scheduler
 
-Der Scheduler ruft aus `app/Console/Kernel.php` auf:
+The scheduler runs commands from `app/Console/Kernel.php`, including cleanup and finalization tasks. Scheduler failure can leave finished jobs without their final VIMP callback.
 
-- `clean:directories` alle 10 Minuten.
-- `transcode:cleanup` alle 10 Minuten.
+Check scheduler logs:
 
-`transcode:cleanup` setzt abgeschlossene Downloads final und sendet den finalen VIMP-Callback. Scheduler-Ausfall kann daher fertige Jobs ohne finalen Callback hinterlassen.
+```bash
+docker compose --env-file .env -f compose.yaml logs --tail=200 scheduler
+```
 
 ## Logs
 
-Standard:
+All services:
 
 ```bash
 docker compose --env-file .env -f compose.yaml logs -f --tail=200
 ```
 
-Gezielt:
+Specific services:
 
 ```bash
 docker compose --env-file .env -f compose.yaml logs --tail=200 scheduler
@@ -81,47 +82,53 @@ docker compose --env-file .env -f compose.yaml logs --tail=200 worker-download
 docker compose --env-file .env -f compose.yaml logs --tail=200 worker-video-gpu
 ```
 
-`SECURITY_LOG_SCRUBBING_ENABLED=true` soll aktiv bleiben. Wenn Logs Tokens enthalten, ist das ein Security-Incident.
+Keep:
+
+```env
+SECURITY_LOG_SCRUBBING_ENABLED=true
+```
+
+If logs contain API tokens or authorization values, treat it as a security incident.
 
 ## Restart
 
-Einzelnen Service neu starten:
+Restart one service:
 
 ```bash
 docker compose --env-file .env -f compose.yaml restart worker-video-gpu
 ```
 
-Gesamten Stack neu starten:
+Restart the full stack:
 
 ```bash
 docker compose --env-file .env -f compose.yaml restart
 ```
 
-Vor Worker-Restart pruefen, ob Jobs aktiv sind. Ein Neustart kann lange Transcodes abbrechen.
+Before restarting workers, check whether jobs are active. A worker restart can interrupt long transcodes.
 
 ## Storage
 
-Relevante Volumes:
+Relevant volumes:
 
-- `uploaded-media`: heruntergeladene VIMP-Quellenkopien.
-- `converted-media`: erzeugte Artefakte.
-- `app-storage`: Laravel Storage.
-- `app-cache`: Bootstrap Cache.
-- `redis-data`: Redis Append-only Daten.
+- `uploaded-media`: downloaded copies of VIMP sources.
+- `converted-media`: generated artifacts.
+- `app-storage`: Laravel storage.
+- `app-cache`: bootstrap cache.
+- `redis-data`: Redis append-only data.
 
-Storage-Werte kommen aus `/internal/metrics`:
+Storage metrics come from `/internal/metrics`:
 
 - `storage.uploaded.free_bytes`
 - `storage.converted.free_bytes`
 - `storage.*.used_bytes`
 
-Keine manuellen Loeschungen ohne Mediakey- und VIMP-Abgleich. Delete-Flow bevorzugt ueber `/api/delete/{mediakey}` testen.
+Do not delete files manually without mediakey and VIMP coordination. Prefer testing cleanup through `/api/delete/{mediakey}`.
 
-## GPU-Betrieb
+## GPU Operation
 
-`worker-video-gpu` ist der einzige produktive Service mit GPU-Reservation.
+`worker-video-gpu` is the only production service with GPU reservation.
 
-GPU Guard Defaults:
+GPU guard defaults:
 
 ```env
 GPU_GUARD_ENABLED=false
@@ -130,14 +137,14 @@ GPU_GUARD_RETRY_DELAY_SECONDS=60
 GPU_GUARD_FAIL_OPEN=false
 ```
 
-Aktivierung nur nach Zielhost-Test. Docker/NVIDIA erzwingt kein hartes VRAM-Limit pro Container.
+Enable GPU guard only after target-host testing. Docker/NVIDIA does not enforce a hard VRAM limit per container.
 
-## Verweise
+## References
 
 - Installation: `docs/INSTALL.md`
 - Deployment: `docs/DEPLOYMENT.md`
 - Monitoring: `docs/ZABBIX.md`
-- VIMP-Staging: `docs/VIMP_STAGING_TEST.md`
+- VIMP staging: `docs/VIMP_STAGING_TEST.md`
 - Troubleshooting: `docs/TROUBLESHOOTING.md`
-- Rollback: `docs/ROLLBACK_PLAN.md`
-- Release Gate: `docs/RELEASE_CHECKLIST.md`
+- Recovery: `docs/ROLLBACK_PLAN.md`
+- Release gate: `docs/RELEASE_CHECKLIST.md`
