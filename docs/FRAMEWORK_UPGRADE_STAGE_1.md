@@ -41,7 +41,7 @@ Composer-Constraints fuer PR9:
 
 Naechster Dependency-PR nach PR9:
 
-- `encore/laravel-admin` und Admin-Erweiterungen gegen die Composer-2.10-Advisory-Blocks bewerten.
+- `encore/laravel-admin` gemaess `docs/adr/0001-admin-package-strategy.md` schrittweise ersetzen.
 - `fideloper/proxy` entfernen oder ersetzen, wenn der naechste Laravel-Hop das verlangt.
 - `php-ffmpeg/php-ffmpeg` vor PHP 8.x separat anheben oder ersetzen.
 - Erst danach PHP 8.x und Laravel 9+ vorbereiten.

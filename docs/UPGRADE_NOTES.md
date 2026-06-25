@@ -16,7 +16,7 @@ Diese Notizen fassen den aktuellen Modernisierungsstand zusammen und definieren 
 ## Bekannte Restrisiken
 
 - Laravel 8 ist EOL und muss weiter auf Laravel 9+ gehoben werden.
-- `encore/laravel-admin <=1.8.19` hat keine gepatchte 1.x-Version fuer die Upload-Advisory.
+- `encore/laravel-admin <=1.8.19` hat keine gepatchte 1.x-Version fuer die Upload-Advisory; die Strategie ist in `docs/adr/0001-admin-package-strategy.md` festgelegt.
 - `swiftmailer/swiftmailer` ist abandoned.
 - `php-ffmpeg/php-ffmpeg` blockiert den PHP-8-Hop und muss separat bewertet werden.
 - Frontend/Admin-Build ist noch nicht final modernisiert.
@@ -32,13 +32,17 @@ Diese Notizen fassen den aktuellen Modernisierungsstand zusammen und definieren 
 
 ## Empfohlene Folge-Reihenfolge
 
-1. Admin-Paket-Entscheid: ersetzen, forken oder Risiko formal akzeptieren.
-2. Mailer-Abloesung: SwiftMailer zu Symfony Mailer im passenden Laravel-Hop.
-3. `php-ffmpeg/php-ffmpeg` anheben oder ersetzen.
-4. PHP-8-Runtime-Hop vorbereiten.
-5. Laravel 9/10 Zwischenhop mit Contract-Tests.
-6. Laravel 12 oder 13 Zielhop nach finaler Zielentscheidung.
-7. Frontend/Admin-Build modernisieren.
+1. Read-only Admin-Ersatz fuer Dashboard, Worker und Queue-Listen.
+2. Profile-CRUD ohne `laravel-admin`.
+3. VIMP-User/API-Token-Management ohne `laravel-admin`.
+4. Admin-Auth/Rollenmodell abloesen.
+5. `laravel-admin-ext/*` und `encore/laravel-admin` entfernen.
+6. Mailer-Abloesung: SwiftMailer zu Symfony Mailer im passenden Laravel-Hop.
+7. `php-ffmpeg/php-ffmpeg` anheben oder ersetzen.
+8. PHP-8-Runtime-Hop vorbereiten.
+9. Laravel 9/10 Zwischenhop mit Contract-Tests.
+10. Laravel 12 oder 13 Zielhop nach finaler Zielentscheidung.
+11. Frontend/Admin-Build modernisieren.
 
 ## Vor jedem Upgrade-PR
 
