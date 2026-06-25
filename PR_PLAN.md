@@ -4,6 +4,8 @@ Stand: 2026-06-23. Alle PRs sind Vorschlaege und brauchen Freigabe vor Implement
 
 Hinweis zum Abarbeitungsstand: Nach PR9 wurde ein Admin-Security-Hardening als PR10 eingeschoben. Die urspruenglich geplante Staging-/Cutover-Vorbereitung wurde als PR11 umgesetzt. Die urspruenglich geplante Operations-/Zabbix-Dokumentation wird deshalb als PR12 umgesetzt.
 
+Naechster Admin-Blocker: ADR 0001 dokumentiert den schrittweisen Ersatz von `encore/laravel-admin`; neue Admin-Funktionen sollen nicht mehr auf `laravel-admin` gebaut werden.
+
 ## PR 0: Audit-Artefakte
 
 Status: erstellt in dieser Aufgabe.
