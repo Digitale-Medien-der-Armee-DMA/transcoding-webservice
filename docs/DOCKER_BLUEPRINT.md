@@ -106,6 +106,16 @@ Staging- und Cutover-Vorbereitung:
 - `docs/LOAD_TEST_PLAN.md`
 - `docs/RELEASE_CHECKLIST.md`
 
+Operations-Dokumentation:
+
+- `docs/INSTALL.md`
+- `docs/DEPLOYMENT.md`
+- `docs/VIMP_STAGING_TEST.md`
+- `docs/ZABBIX.md`
+- `docs/OPERATIONS.md`
+- `docs/TROUBLESHOOTING.md`
+- `docs/UPGRADE_NOTES.md`
+
 ## Offene Punkte fuer Folge-PRs
 
 - Spaeter: non-root UID/GID gegen echte Host-/NFS-Mounts validieren.

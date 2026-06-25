@@ -2,6 +2,8 @@
 
 Stand: 2026-06-23. Alle PRs sind Vorschlaege und brauchen Freigabe vor Implementierung.
 
+Hinweis zum Abarbeitungsstand: Nach PR9 wurde ein Admin-Security-Hardening als PR10 eingeschoben. Die urspruenglich geplante Staging-/Cutover-Vorbereitung wurde als PR11 umgesetzt. Die urspruenglich geplante Operations-/Zabbix-Dokumentation wird deshalb als PR12 umgesetzt.
+
 ## PR 0: Audit-Artefakte
 
 Status: erstellt in dieser Aufgabe.
