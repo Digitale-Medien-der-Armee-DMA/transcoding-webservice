@@ -39,12 +39,15 @@ Composer-Constraints fuer PR9:
 
 ## Naechster Composer-Hop
 
-Naechster Dependency-PR nach PR9:
+Die naechsten Hops laufen als zusammengefasster Track in `docs/ITERATIVE_UPGRADE_TRACK.md`. Die Reihenfolge bleibt iterativ, aber PR14-20 werden als ein gemeinsamer Modernisierungsschritt geplant.
 
-- `encore/laravel-admin` gemaess `docs/adr/0001-admin-package-strategy.md` schrittweise ersetzen.
-- `fideloper/proxy` entfernen oder ersetzen, wenn der naechste Laravel-Hop das verlangt.
-- `php-ffmpeg/php-ffmpeg` vor PHP 8.x separat anheben oder ersetzen.
-- Erst danach PHP 8.x und Laravel 9+ vorbereiten.
+Naechste Dependency- und Runtime-Gates:
+
+- PR14-16: `encore/laravel-admin` gemaess `docs/adr/0001-admin-package-strategy.md` schrittweise ersetzen und entfernen.
+- PR17: `fideloper/proxy`, Mailer- und `php-ffmpeg/php-ffmpeg`-Blocker fuer PHP 8/Laravel 9 loesen.
+- PR18: Freigegebene PHP-8-Runtime und Laravel-9-Hop umsetzen.
+- PR19: Laravel-10/11-Bridge-Hops umsetzen, falls fuer das finale Ziel noetig.
+- PR20: Final freigegebenes Laravel-Ziel und Admin-/Frontend-Build abschliessen.
 
 ## PR10 Security-Hardening
 

@@ -23,7 +23,8 @@ Diese Notizen fassen den aktuellen Modernisierungsstand zusammen und definieren 
 
 ## Upgrade-Regeln
 
-- Ein Upgrade-Thema pro PR.
+- PR14-20 laufen als ein gemeinsamer iterativer Upgrade-Track, dokumentiert in `docs/ITERATIVE_UPGRADE_TRACK.md`.
+- Jeder Track-Checkpoint bleibt ein eigener mergebarer PR mit klarem Exit-Kriterium.
 - Vor jedem Dependency-Hop Contract-Tests gruen.
 - Nach jedem Dependency-Hop VIMP-Staging-Test wiederholen.
 - Keine ungeplanten Full-Updates auf Composer 2.10, solange Advisory-Blocks nicht bewusst behandelt sind.
@@ -32,17 +33,13 @@ Diese Notizen fassen den aktuellen Modernisierungsstand zusammen und definieren 
 
 ## Empfohlene Folge-Reihenfolge
 
-1. Read-only Admin-Ersatz fuer Dashboard, Worker und Queue-Listen.
-2. Profile-CRUD ohne `laravel-admin`.
-3. VIMP-User/API-Token-Management ohne `laravel-admin`.
-4. Admin-Auth/Rollenmodell abloesen.
-5. `laravel-admin-ext/*` und `encore/laravel-admin` entfernen.
-6. Mailer-Abloesung: SwiftMailer zu Symfony Mailer im passenden Laravel-Hop.
-7. `php-ffmpeg/php-ffmpeg` anheben oder ersetzen.
-8. PHP-8-Runtime-Hop vorbereiten.
-9. Laravel 9/10 Zwischenhop mit Contract-Tests.
-10. Laravel 12 oder 13 Zielhop nach finaler Zielentscheidung.
-11. Frontend/Admin-Build modernisieren.
+1. PR14: Internal Admin Operations Shell.
+2. PR15: Internal Profile and Queue Management.
+3. PR16: Internal Admin Users, Auth, and Package Removal.
+4. PR17: PHP 8 Readiness and Dependency Unblock.
+5. PR18: PHP Runtime Hop and Laravel 9 Hop.
+6. PR19: Laravel 10/11 Bridge Hop.
+7. PR20: Final Laravel Target Hop and Frontend/Admin Build Finish.
 
 ## Vor jedem Upgrade-PR
 

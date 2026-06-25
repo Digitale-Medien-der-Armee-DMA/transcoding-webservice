@@ -6,6 +6,35 @@ Hinweis zum Abarbeitungsstand: Nach PR9 wurde ein Admin-Security-Hardening als P
 
 Naechster Admin-Blocker: ADR 0001 dokumentiert den schrittweisen Ersatz von `encore/laravel-admin`; neue Admin-Funktionen sollen nicht mehr auf `laravel-admin` gebaut werden.
 
+## Aktueller Track: PR14-20 Admin- und Laravel-Hops
+
+Status: zusammengefasst in `docs/ITERATIVE_UPGRADE_TRACK.md`.
+
+Ziel:
+
+- Die naechsten sieben PRs als einen groesseren, iterativen Upgrade-Track abarbeiten.
+- Zuerst `laravel-admin` funktional ersetzen und entfernen.
+- Danach PHP-8-Readiness, Runtime-Hop und Laravel-Zwischenhops bis zum final freigegebenen Ziel ausfuehren.
+
+Checkpoints:
+
+| PR | Checkpoint | Ergebnis |
+| --- | --- | --- |
+| PR14 | Internal Admin Operations Shell | Read-only Dashboard, Queue-, Worker- und Health-Ansichten ohne `laravel-admin` |
+| PR15 | Internal Profile and Queue Management | Profile, FFmpeg-Optionen und Queue-Betriebsflows ohne `laravel-admin` Resource Controller |
+| PR16 | Internal Admin Users, Auth, and Package Removal | User/API-Token-Management, Auth/Rollen und Entfernung von `laravel-admin-ext/*` und `encore/laravel-admin` |
+| PR17 | PHP 8 Readiness and Dependency Unblock | `php-ffmpeg`, Proxy/Mailer und Composer-Blocker fuer PHP 8/Laravel 9 geloest |
+| PR18 | PHP Runtime Hop and Laravel 9 Hop | Freigegebene PHP-8-Runtime und Laravel-9-Zwischenstufe gruen |
+| PR19 | Laravel 10/11 Bridge Hop | Noetige Framework-Bridge-Hops und Legacy-Aufraeumarbeiten gruen |
+| PR20 | Final Laravel Target Hop and Frontend/Admin Build Finish | Final freigegebenes Laravel-Ziel, Node-24-Build und Upgrade-Doku abgeschlossen |
+
+Guardrails:
+
+- Jeder Checkpoint bleibt ein eigener mergebarer PR gegen `master`.
+- VIMP Contract-Tests bleiben vor und nach jedem Checkpoint Pflicht.
+- Keine Admin-Uploads, keine ungeplanten `/api`-Aenderungen, keine Token-/URL-Verhaltensaenderung ohne Freigabe.
+- Zielversionen fuer PHP und finales Laravel-Ziel muessen vor PR18/PR20 explizit freigegeben sein.
+
 ## PR 0: Audit-Artefakte
 
 Status: erstellt in dieser Aufgabe.

@@ -152,6 +152,8 @@ Migrationshinweis:
 
 Ziel: supportbare Basis ohne Big-Bang-Risiko.
 
+Der konkrete Arbeitsplan fuer die naechsten Checkpoints liegt in `docs/ITERATIVE_UPGRADE_TRACK.md`. PR14-20 bilden einen zusammengefassten, aber weiterhin iterativen Track: Admin-Paket entfernen, PHP-8-Blocker loesen, Runtime-Hop ausfuehren und danach die Laravel-Hops bis zum final freigegebenen Ziel durchlaufen.
+
 Empfohlene Stufen:
 
 1. Composer-Baseline stabilisieren und Security-Audit ausfuehren.
