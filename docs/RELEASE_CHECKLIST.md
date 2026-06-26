@@ -1,91 +1,94 @@
 # Release Checklist
 
-Stand: 2026-06-24
+Status: 2026-06-25
 
-Diese Checkliste dient als Go/No-Go-Gate fuer den Produktions-Cutover. Sie ersetzt keine Freigabe durch Betrieb und VIMP-Verantwortliche.
+This checklist is the Go/No-Go gate for a clean-install production acceptance. It does not replace approval by operations and VIMP owners.
 
-## Code und CI
+## Code And CI
 
-- [ ] Release-Branch basiert auf aktuellem `master`.
-- [ ] GitHub Actions sind gruen.
-- [ ] Keine uncommitted Changes auf dem Release-Host.
-- [ ] `composer.lock` und `package-lock.json` sind unveraendert gegen den freigegebenen Commit.
-- [ ] Keine Secrets wurden committed.
-- [ ] PR-Beschreibung nennt bekannte Restrisiken.
+- [ ] Release commit is based on current `master`.
+- [ ] GitHub Actions are green.
+- [ ] No uncommitted changes exist on the release host.
+- [ ] `composer.lock` and `package-lock.json` match the approved commit.
+- [ ] No secrets were committed.
+- [ ] PR or release notes list known residual risks.
 
-## Konfiguration
+## Configuration
 
-- [ ] `.env` liegt nur auf dem Zielhost.
-- [ ] `APP_KEY` ist gesetzt.
+- [ ] `.env` exists only on the target host.
+- [ ] `APP_KEY` is set.
 - [ ] `APP_ENV=production`.
 - [ ] `APP_DEBUG=false`.
-- [ ] Externe Produktionsdatenbank ist konfiguriert.
-- [ ] Redis-Ziel ist konfiguriert.
-- [ ] `ADMIN_UPLOADS_ENABLED=false`, ausser Risikoakzeptanz ist dokumentiert.
+- [ ] Fresh external production database is configured.
+- [ ] Redis target is configured.
+- [ ] `ADMIN_UPLOADS_ENABLED=false`.
 - [ ] `SECURITY_LOG_SCRUBBING_ENABLED=true`.
-- [ ] Source-URL-Allowlist-Entscheidung ist dokumentiert.
+- [ ] Source URL allowlist decision is documented.
+- [ ] Default admin credentials are replaced or rotation is documented before production use.
 
-## Infrastruktur
+## Infrastructure
 
-- [ ] Docker Compose Version ist dokumentiert.
-- [ ] Host hat ausreichend Disk fuer `uploaded-media` und `converted-media`.
-- [ ] Volume-Layout ist dokumentiert.
-- [ ] Reverse Proxy zeigt auf den geplanten `HTTP_BIND`.
-- [ ] DB-Backup vor Cutover ist erstellt.
-- [ ] Restore-Pfad wurde getestet oder Risiko akzeptiert.
-- [ ] Rollback-Commit/Image-Tag ist bekannt.
+- [ ] Docker Compose version is documented.
+- [ ] Host has enough disk for `uploaded-media` and `converted-media`.
+- [ ] Volume layout is documented.
+- [ ] Reverse proxy points to the planned `HTTP_BIND`.
+- [ ] Fresh DB bootstrap path is documented.
+- [ ] Rebuild/recovery path is documented.
+- [ ] Images, Compose files, and `.env` backup location are known.
 
-## GPU und FFmpeg
+## GPU And FFmpeg
 
-- [ ] `make ffmpeg-cpu-smoke` bestanden.
-- [ ] `make ffmpeg-gpu-smoke` auf Zielhost bestanden, falls GPU-Produktion geplant ist.
-- [ ] NVIDIA-Treiber-Version ist dokumentiert.
-- [ ] NVIDIA Container Toolkit funktioniert.
-- [ ] `GPU_GUARD_ENABLED` Entscheidung ist dokumentiert.
-- [ ] `GPU_GUARD_MIN_FREE_MB` ist passend zur Zielkarte gesetzt oder bewusst deaktiviert.
+- [ ] CPU FFmpeg smoke passed.
+- [ ] GPU FFmpeg smoke passed on the target host if GPU production is planned.
+- [ ] NVIDIA driver version is documented.
+- [ ] NVIDIA Container Toolkit works.
+- [ ] `GPU_GUARD_ENABLED` decision is documented.
+- [ ] `GPU_GUARD_MIN_FREE_MB` matches the target card or is consciously disabled.
 
-## Anwendung
+## Application
 
-- [ ] `make build` erfolgreich.
-- [ ] `make migrate` erfolgreich oder nicht erforderlich.
-- [ ] `/internal/health/live` ist `ok`.
-- [ ] `/internal/health/ready` ist `ok`.
-- [ ] `/internal/metrics` liefert Werte fuer DB, Queue, Worker, Storage und FFmpeg.
-- [ ] Worker und Scheduler laufen.
-- [ ] Queue-Namen fuer Download und Video stimmen.
+- [ ] Compose config validates.
+- [ ] Build succeeds.
+- [ ] Fresh database migrations succeed.
+- [ ] Release-specific bootstrap/seed steps are completed, if any.
+- [ ] `/internal/health/live` is `ok`.
+- [ ] `/internal/health/ready` is `ok`.
+- [ ] `/internal/metrics` returns DB, queue, worker, storage, and FFmpeg values.
+- [ ] Workers and scheduler are running.
+- [ ] Download and video queue names match the environment.
 
-## VIMP-Staging
+## VIMP Staging
 
-- [ ] VIMP-Staging-User und API-Token sind gesetzt.
-- [ ] Testtranscode erfolgreich.
-- [ ] Callback in VIMP-Staging erfolgreich.
-- [ ] Status-Endpunkt gibt erwarteten Status.
-- [ ] Finished-Endpunkt markiert nur eigene Dateien.
-- [ ] Delete-Flow loescht nur erwarteten Test-Mediakey.
+- [ ] VIMP staging user and API token are configured.
+- [ ] Test transcode succeeds.
+- [ ] Callback arrives in VIMP staging.
+- [ ] Status endpoint returns the expected status.
+- [ ] Finished endpoint marks only the expected generated file.
+- [ ] Delete flow removes only the expected test mediakey.
+- [ ] No tokens or authorization values appear in logs.
 
-## Lasttest
+## Load Test
 
-- [ ] LT-001 Einzeljob-Baseline bestanden.
-- [ ] LT-002 kleine Parallelitaet bestanden.
-- [ ] LT-003 GPU-Saettigung konservativ bestanden oder bewusst nicht anwendbar.
-- [ ] LT-004 Fehlerpfad bestanden.
-- [ ] LT-005 Delete-/Cleanup-Vorbereitung bestanden.
-- [ ] Keine blockierenden Befunde aus `docs/LOAD_TEST_PLAN.md` offen.
+- [ ] LT-001 single-job baseline passed.
+- [ ] LT-002 small parallelism passed.
+- [ ] LT-003 GPU saturation is conservatively passed or explicitly not applicable.
+- [ ] LT-004 failure path passed.
+- [ ] LT-005 delete/cleanup preparation passed.
+- [ ] No blocking findings from `docs/LOAD_TEST_PLAN.md` remain open.
 
-## Cutover-Freigabe
+## Go/No-Go
 
-- [ ] Wartungsfenster ist bestaetigt.
-- [ ] VIMP-Verantwortliche sind erreichbar.
-- [ ] Betriebsverantwortliche sind erreichbar.
-- [ ] Rollback-Plan ist griffbereit.
-- [ ] Monitoring ist aktiv.
-- [ ] Go/No-Go wurde dokumentiert.
+- [ ] VIMP owners are reachable.
+- [ ] Operations owners are reachable.
+- [ ] Monitoring is active.
+- [ ] Recovery plan is available.
+- [ ] Go/No-Go decision is documented.
 
-## Nach Cutover
+## After Production Acceptance
 
-- [ ] Erste produktive Transcodes beobachtet.
-- [ ] Keine unerwarteten Worker-Restarts.
-- [ ] Keine Token-Leaks in Logs.
-- [ ] Queue-Laengen normalisieren sich.
-- [ ] GPU/VRAM-Werte liegen im erwarteten Bereich.
-- [ ] Abschlussnotiz mit Commit, Zeitpunkt und Befunden ist erstellt.
+- [ ] First production transcodes are observed.
+- [ ] No unexpected worker restarts occur.
+- [ ] No token leaks appear in logs.
+- [ ] Queue lengths normalize.
+- [ ] GPU/VRAM values are within expected range.
+- [ ] Final note with commit, time, and findings is recorded.

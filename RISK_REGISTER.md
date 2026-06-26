@@ -5,7 +5,7 @@ Stand: 2026-06-23
 | ID | Risiko | Schwere | Wahrscheinlichkeit | Befund | Massnahme |
 | --- | --- | --- | --- | --- | --- |
 | R-001 | VIMP API wird durch Modernisierung gebrochen | Kritisch | Mittel | API liegt in `routes/web.php`; Callback-Payloads sind implizit im Code | Vor Refactoring Contract-Tests und Fake-VIMP-Server |
-| R-002 | Laravel 7/PHP 7.x/Node 12 sind EOL | Kritisch | Hoch | Composer/Docker nutzen alte Versionen | Stufenweiser Upgradepfad, keine Big-Bang-Aenderung |
+| R-002 | Laravel 7/PHP 7.x/Node 12 sind EOL | Kritisch | Hoch | Composer/Docker nutzen alte Versionen | PR14-20 als iterativer Clean-Install-Track mit einzelnen Merge-Gates und Contract-Tests |
 | R-003 | `laravel-admin` blockiert moderne Laravel-Versionen | Hoch | Hoch | `encore/laravel-admin v1.8.11`, Releasezeit 2020 | ADR 0001: keine neuen Admin-Features auf `laravel-admin`, schrittweiser interner Ersatz |
 | R-004 | Boolean-Statusspalten speichern vier Statuswerte | Hoch | Hoch | `processed` ist boolean, Code nutzt 0/1/2/3 | Eigene Statusmigration mit Tests und Datencheck |
 | R-005 | DB-Queue skaliert und beobachtet schlecht | Hoch | Mittel | Default `database`, lange `retry_after`, keine Queue-Metriken | Redis-Queue, getrennte Worker, Metrics |
@@ -23,8 +23,8 @@ Stand: 2026-06-23
 | R-017 | Worker-Timeouts blockieren lange oder haengende Jobs | Mittel | Mittel | `--timeout=84600`, `retry_after=42300` | Job-spezifische Timeouts, Heartbeat, Kill/Retry-Strategie |
 | R-018 | Fehlerpfade setzen `failed_at` nicht konsistent | Mittel | Hoch | Code setzt oft nur `processed=FAILED` | Failure-Modell konsolidieren |
 | R-019 | VIMP-Quellen sollen behalten werden, Webservice-Cleanup loescht aber eigene Upload-Kopie | Mittel | Mittel | VIMP-Quelle bleibt extern, Webservice-Kopie wird geloescht | Flow dokumentieren, Retention konfigurierbar |
-| R-020 | Ausfallzeit > 30 Minuten beim Cutover | Kritisch | Mittel | Mehrere Migrationsachsen: Runtime, DB, Queue, GPU | Staging-Dryrun, Vorbuild, Rollback, kleine PRs |
-| R-021 | Composer 2.10 blockiert `encore/laravel-admin` wegen Security-Advisories | Hoch | Hoch | Laravel-8-Hop kann nur als gezielter Partial-Resolve erfolgen; Full-Update blockiert gegen `encore/laravel-admin <=1.8.19` | PR10 blockiert Uploads; ADR 0001 waehlt schrittweisen Ersatz statt dauerhafter Risikoakzeptanz |
+| R-020 | Clean-Install-Abnahme ist unvollstaendig | Hoch | Mittel | Keine bestehende Installation muss migriert werden; Risiko liegt in Bootstrap, Secrets, VIMP-Registrierung und Smoke-Abnahme | Installationsrunbook, Staging-Dryrun, Vorbuild, Recovery-Doku und kleine PRs |
+| R-021 | Composer 2.10 blockiert `encore/laravel-admin` wegen Security-Advisories | Hoch | Hoch | Laravel-8-Hop kann nur als gezielter Partial-Resolve erfolgen; Full-Update blockiert gegen `encore/laravel-admin <=1.8.19` | PR10 blockiert Uploads; ADR 0001 und PR14-16 entfernen den Admin-Paket-Blocker vor Full-Updates |
 
 ## Blockierende Fragen vor Implementierung
 

@@ -1,12 +1,14 @@
-# Migration Plan
+# Clean Install Plan
 
-Stand: 2026-06-23. Dieser Plan beschreibt den empfohlenen Weg. Umsetzung erst nach expliziter Freigabe.
+Stand: 2026-06-23. Dieser Plan beschreibt den empfohlenen Weg fuer eine Neuinstallation. Umsetzung erst nach expliziter Freigabe.
+
+Hinweis: Es gibt keine bestehende Installation, die aktualisiert oder migriert werden muss. Die Anleitungen sollen deshalb Bootstrap, Erstinstallation, Staging-Abnahme, Produktionsinbetriebnahme und Recovery beschreiben. Bestandsdatenmigrationen werden nur dokumentiert, wenn sie fuer die App-Semantik im Code selbst relevant sind oder spaeter explizit beauftragt werden.
 
 ## Zielbild
 
 Interner, dockerisierter VIMP Transcoding Webservice fuer Ubuntu 24 LTS mit NVIDIA L40S:
 
-- VIMP-kompatible bestehende API.
+- VIMP-kompatible API.
 - Weboberflaeche bleibt erhalten.
 - Externe Produktionsdatenbank, kein DB-Container im Production-Compose.
 - Redis/Queue-Worker sauber containerisiert.
@@ -141,16 +143,19 @@ Arbeiten:
 - Separate Worker-Services mit eigenen Timeouts, Memory-Limits und Restart-Policies.
 - Retry-/Backoff-Strategie definieren.
 - Failed-Jobs-Handling verstaendlicher machen.
-- Statusspalten von boolean auf integer migrieren oder neue status-Spalten einfuehren.
+- Statusschema fuer neue Installationen korrekt als integerfaehiges Modell bereitstellen.
 - Worker-Heartbeat robust machen.
 
-Migrationshinweis:
+Clean-Install-Hinweis:
 
-- Statusmigration ist datenrelevant. Sie braucht Backup, Staging-Probelauf und Rollback-Plan.
+- Da keine Bestandsdaten uebernommen werden muessen, braucht das Statusschema keinen Datenmigrationsteil fuer produktive Altdaten.
+- Schema, Seeder und Tests muessen aber sicherstellen, dass neue Jobs von Anfang an die dokumentierten Statuswerte nutzen.
 
 ## Phase 5: Dependency- und Framework-Upgrade
 
 Ziel: supportbare Basis ohne Big-Bang-Risiko.
+
+Der konkrete Arbeitsplan fuer die naechsten Checkpoints liegt in `docs/ITERATIVE_UPGRADE_TRACK.md`. PR14-20 bilden einen zusammengefassten, aber weiterhin iterativen Clean-Install-Track: Admin-Paket entfernen, PHP-8-Blocker loesen, Runtime-Hop ausfuehren und danach die Laravel-Hops bis zum final freigegebenen Ziel durchlaufen.
 
 Empfohlene Stufen:
 
@@ -158,7 +163,7 @@ Empfohlene Stufen:
 2. Laravel 7 auf letzte kompatible PHP-8-Testbasis bringen, soweit moeglich.
 3. Stufenweise Laravel 8 -> 9 -> 10 -> 11 -> 12/13 pruefen, mit Rector/Laravel-Upgrade-Guides und Contract-Tests nach jeder Stufe.
 4. Admin-Oberflaeche pruefen: `encore/laravel-admin` ist alt und kann Ziel-Laravel blockieren.
-5. Frontend von Laravel Mix 5/Webpack auf Vite oder minimal gepflegten Build migrieren, sofern Admin-Assets nicht dagegen sprechen.
+5. Frontend von Laravel Mix 5/Webpack auf Vite oder minimal gepflegten Build umstellen, sofern Admin-Assets nicht dagegen sprechen.
 6. Node-Ziel: fuer sofortige LTS-Stabilitaet Node 24; Node 26 erst nach LTS-Start und Build-Kompatibilitaetscheck.
 7. Testframework auf moderne PHPUnit/Pest-Option evaluieren, aber nur wenn Laravel-Zielversion feststeht.
 
@@ -182,51 +187,56 @@ Arbeiten:
 - Download- und Delete-Pfade gegen Traversal/unerwartete Dateinamen absichern.
 - `setDownloadFinished()` auf User/Mediakey-Kontext einschraenken, sofern VIMP-Vertrag dies erlaubt.
 - Token-Rotation dokumentieren.
-- Token-Hashing nur mit Migration und VIMP-Abstimmung.
+- Token-Hashing nur mit VIMP-Abstimmung und bewusstem Bootstrap-/Rotation-Konzept.
 - FFmpeg-Prozess-Timeouts und Ressourcenlimits pruefen.
 - Logs fuer Tokens/Secrets scrubben.
 - Default-Admin-Credentials beim Setup prominent erzwingen.
 
-## Phase 7: Staging mit VIMP 6.2.8
+## Phase 7: Clean-Install-Staging mit VIMP 6.2.8
 
-Ziel: reale Kompatibilitaet vor Produktionsschwenk.
+Ziel: reale Kompatibilitaet der Neuinstallation vor Produktionsfreigabe.
 
 Testablauf:
 
-1. Staging-VIMP registriert Webservice-URL und API-Token.
-2. Webservice laedt Quelle von VIMP.
-3. Transcoding fuer 1080p, 720p, 380p, Thumbnail und HLS.
-4. VIMP erhaelt Callbacks und laedt Artefakte herunter.
-5. VIMP markiert Downloads finished.
-6. Webservice sendet finalen Callback.
-7. Delete-Flow pruefen.
-8. Monitoring in Zabbix pruefen.
-9. Lasttest mit 1, 2, 4, spaeter 6 parallelen Jobs; 20 nur nach Messwerten.
+1. Frische Staging-Datenbank bereitstellen.
+2. `.env` aus Template erstellen, Secrets setzen und App-Key generieren.
+3. Datenbankmigrationen und initiale Seeder/Bootstrap-Schritte ausfuehren.
+4. Admin-Credentials und VIMP-User/API-Token kontrolliert erzeugen.
+5. Staging-VIMP registriert Webservice-URL und API-Token.
+6. Webservice laedt Quelle von VIMP.
+7. Transcoding fuer 1080p, 720p, 380p, Thumbnail und HLS.
+8. VIMP erhaelt Callbacks und laedt Artefakte herunter.
+9. VIMP markiert Downloads finished.
+10. Webservice sendet finalen Callback.
+11. Delete-Flow pruefen.
+12. Monitoring in Zabbix pruefen.
+13. Lasttest mit 1, 2, 4, spaeter 6 parallelen Jobs; 20 nur nach Messwerten.
 
 PR11 konkretisiert den Staging-Lauf in `docs/STAGING_RUNBOOK.md` und den Lasttest in `docs/LOAD_TEST_PLAN.md`.
 
-## Phase 8: Produktionsmigration
+## Phase 8: Produktionsinbetriebnahme als Clean Install
 
-Ziel: Downtime unter 30 Minuten.
+Ziel: reproduzierbare Erstinbetriebnahme ohne Bestandsmigration.
 
 Vorgehen:
 
-- Vorab DB-Backup und Storage-Snapshot.
 - Images vorbauen.
-- `.env` vorbereitet, Secrets gesetzt, APP_URL intern korrekt.
-- Compose pull/build vor Wartungsfenster.
-- Migrationsdryrun in Staging.
-- Wartungsfenster:
-  - VIMP-Encoding pausieren oder Queue drainen.
-  - Deploy `git pull`, `docker compose build`, `docker compose up -d`.
-  - Health/readiness pruefen.
-  - kleiner VIMP-Testjob.
-  - Zabbix Trigger gruen.
-- Rollback:
-  - vorheriges Image/Compose-State bereit halten.
-  - DB-Migrationen nur vorwaerts, wenn rollbackfaehig oder per Backup abgesichert.
+- Frische externe Produktionsdatenbank bereitstellen.
+- Volumes fuer Storage, Cache, Uploads und Converted Media anlegen.
+- `.env` aus Template erstellen, Secrets setzen, APP_URL intern korrekt setzen.
+- VIMP-User/API-Token und Admin-Zugang kontrolliert bootstrapen.
+- `docker compose pull/build` und `docker compose up -d` ausfuehren.
+- Datenbankmigrationen/Seeder fuer die Neuinstallation ausfuehren.
+- Health/readiness pruefen.
+- FFmpeg-CPU- und GPU-Smoke auf Zielhost pruefen.
+- Kleinen VIMP-Testjob ausfuehren.
+- Zabbix Trigger gruen pruefen.
+- Recovery:
+  - Images, Compose-Dateien und `.env` reproduzierbar versionieren bzw. sichern.
+  - Frische DB/Volumes koennen bei fehlgeschlagener Abnahme neu aufgebaut werden.
+  - Keine Rueckmigration produktiver Altdaten einplanen.
 
-PR11 konkretisiert die Cutover-Freigabe in `docs/RELEASE_CHECKLIST.md` und den Rueckweg in `docs/ROLLBACK_PLAN.md`.
+PR11 konkretisiert die Freigabe in `docs/RELEASE_CHECKLIST.md` und den Rueckweg in `docs/ROLLBACK_PLAN.md`; diese Dokumente sollen im weiteren Track auf Clean-Install-Recovery statt Bestandsrollback ausgerichtet werden.
 
 PR12 konkretisiert Installation, Deployment, VIMP-Staging, Zabbix, laufenden Betrieb, Troubleshooting und Upgrade-Notizen:
 
