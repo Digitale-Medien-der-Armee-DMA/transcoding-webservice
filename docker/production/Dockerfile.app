@@ -27,6 +27,8 @@ RUN apt-get update \
         zip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" gd intl opcache pdo_mysql zip \
+    && pecl install redis-6.0.2 \
+    && docker-php-ext-enable redis \
     && groupadd --gid "${APP_GID}" app \
     && useradd --uid "${APP_UID}" --gid app --home-dir /var/www/html --shell /bin/bash app \
     && rm -rf /var/lib/apt/lists/*
