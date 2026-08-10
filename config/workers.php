@@ -8,7 +8,10 @@ return [
 
     'heartbeat' => [
         'enabled' => env('WORKER_HEARTBEAT_ENABLED', true),
+        'name' => env('WORKER_NAME'),
     ],
+
+    'video_retry_backoff_seconds' => env('WORKER_VIDEO_RETRY_BACKOFF_SECONDS', 30),
 
     'gpu_guard' => [
         'enabled' => env('GPU_GUARD_ENABLED', false),

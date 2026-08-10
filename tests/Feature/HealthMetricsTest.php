@@ -27,6 +27,7 @@ class HealthMetricsTest extends TestCase
             'health.redis_required' => false,
             'health.worker_stale_after_seconds' => 300,
             'health.queue_names' => ['download', 'video', 'default'],
+            'queue.default' => 'database',
             'workers.heartbeat.enabled' => true,
             'workers.gpu_guard.enabled' => false,
             'workers.gpu_guard.min_free_mb' => 12288,

@@ -56,6 +56,7 @@ services:
     environment:
       WAIT_FOR_DB: "true"
       WAIT_FOR_REDIS: "${HEALTH_REDIS_REQUIRED:-false}"
+      WORKER_NAME: "${WORKER_DOWNLOAD_NAME:-worker-download}"
     command:
       - php
       - artisan
@@ -91,6 +92,7 @@ services:
     environment:
       WAIT_FOR_DB: "true"
       WAIT_FOR_REDIS: "${HEALTH_REDIS_REQUIRED:-false}"
+      WORKER_NAME: "${WORKER_VIDEO_NAME:-worker-video-gpu}"
       NVIDIA_VISIBLE_DEVICES: "${NVIDIA_VISIBLE_DEVICES:-all}"
       NVIDIA_DRIVER_CAPABILITIES: "${NVIDIA_DRIVER_CAPABILITIES:-compute,utility,video}"
     command:

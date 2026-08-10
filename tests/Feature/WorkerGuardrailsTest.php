@@ -72,6 +72,7 @@ class WorkerGuardrailsTest extends TestCase
     public function test_worker_heartbeat_upserts_current_worker(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-06-24 12:00:00'));
+        config(['workers.heartbeat.name' => null]);
 
         app(WorkerHeartbeat::class)->touch('video', 'App\\Jobs\\ConvertVideoJob');
 
@@ -85,6 +86,18 @@ class WorkerGuardrailsTest extends TestCase
         $this->assertSame('video', $description['queue']);
         $this->assertSame('App\\Jobs\\ConvertVideoJob', $description['job']);
         $this->assertArrayHasKey('ip', $description);
+    }
+
+    public function test_worker_heartbeat_uses_stable_configured_name(): void
+    {
+        config([
+            'workers.heartbeat.enabled' => true,
+            'workers.heartbeat.name' => 'worker-video-gpu',
+        ]);
+
+        app(WorkerHeartbeat::class)->touch('video');
+
+        $this->assertDatabaseHas('workers', ['host' => 'worker-video-gpu']);
     }
 
     private function fakeNvidiaSmi(string $output): string

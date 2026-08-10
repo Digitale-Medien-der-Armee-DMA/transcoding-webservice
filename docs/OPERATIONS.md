@@ -47,8 +47,11 @@ Expected behavior:
 
 - `download.waiting` rises briefly after new VIMP jobs.
 - `video.waiting` rises after successful downloads.
+- Delayed Redis retries remain visible in `waiting`; reserved jobs are visible in `running`.
 - `running_jobs` returns to 0 after completion.
 - `workers.stale` stays at 0.
+
+Video job failures are retried by Laravel with `WORKER_VIDEO_RETRY_BACKOFF_SECONDS`. The original exception is preserved in `failed_jobs`. The first terminal failure marks the complete download as failed and sends one VIMP error callback; remaining sibling jobs then exit without starting FFmpeg.
 
 Backlog interpretation:
 

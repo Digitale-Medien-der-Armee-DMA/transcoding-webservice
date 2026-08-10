@@ -3,11 +3,9 @@
 namespace App\Jobs;
 
 use App\Jobs\Concerns\GuardsVideoWorker;
+use App\Jobs\Concerns\HandlesVideoJobLifecycle;
 use App\Http\Controllers\TranscodingController;
-use App\Http\Controllers\VideoController;
-use App\Models\DownloadJob;
 use App\Models\Video;
-use Carbon\Carbon;
 use FFMpeg\Coordinate\Dimension;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\SerializesModels;
@@ -19,7 +17,7 @@ use Throwable;
 
 class CreateThumbnailJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, GuardsVideoWorker;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, GuardsVideoWorker, HandlesVideoJobLifecycle;
 
     public $video;
 
@@ -41,6 +39,11 @@ class CreateThumbnailJob implements ShouldQueue
             return;
         }
 
+        if (!$this->shouldProcessVideo()) {
+            Log::debug("Exiting " . __METHOD__ . " because the video job is complete or cancelled");
+            return;
+        }
+
         $this->transcoder = new TranscodingController($this->video, $this->dimension, $this->attempts());
 	    try
         {
@@ -50,28 +53,8 @@ class CreateThumbnailJob implements ShouldQueue
         catch (Throwable $exception)
         {
             Log::info("CreateThumbnailJob Message: " . $exception->getMessage() . ", Code: " . $exception->getCode() . ", Attempt: " . $this->attempts() . ", Class: " . get_class($exception) . ", Trace: " . $exception->getTraceAsString());
-            $this->video->update(['processed' => Video::FAILED]);
-            $this->job->release();
+            $this->retryVideoJob($exception);
         }
-        Log::debug("Exiting " . __METHOD__);
-    }
-
-    public function failed(Throwable $exception)
-    {
-        Log::debug("Entering " . __METHOD__);
-        $this->video->update(['processed' => Video::FAILED]);
-        $this->failAll();
-        TranscodingController::executeErrorCallback($this->video, $exception->getMessage());
-        Log::debug("Exiting " . __METHOD__);
-    }
-
-    private function failAll()
-    {
-        Log::debug("Entering " . __METHOD__);
-        Log::info('One or more steps of CreateThumbnailJob with download_id ' . $this->video->download_id . ' failed, cancelling all related jobs');
-        DownloadFileJob::killAssociatedJobs($this->video->download_id);
-        VideoController::deleteAllByMediaKey($this->video->mediakey);
-        $this->delete();
         Log::debug("Exiting " . __METHOD__);
     }
 

@@ -44,6 +44,7 @@ COPY docker/production/app-entrypoint.sh /usr/local/bin/app-entrypoint
 
 RUN chmod +x /usr/local/bin/app-entrypoint \
     && mkdir -p storage/app/public/uploaded storage/app/public/converted storage/framework/cache/data storage/framework/sessions storage/framework/testing storage/framework/views bootstrap/cache \
+    && rm -f bootstrap/cache/*.php \
     && composer install --no-dev --prefer-dist --no-interaction --no-progress --no-scripts \
     && php artisan package:discover --ansi \
     && chown -R app:app storage bootstrap/cache
