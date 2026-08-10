@@ -91,10 +91,10 @@ jobs:
         run: |
           docker run --rm --entrypoint sh transcoding-webservice-worker-gpu:local -lc '
             php -r '\''exit(extension_loaded("redis") && phpversion("redis") === "6.0.2" ? 0 : 1);'\''
-            ffmpeg -hide_banner -version | head -n 1 | grep -q "ffmpeg version 6.1.1"
-            ffmpeg -hide_banner -encoders 2>/dev/null | grep -q h264_nvenc
-            ffmpeg -hide_banner -filters 2>/dev/null | grep -q scale_cuda
-            ffmpeg -hide_banner -hwaccels 2>/dev/null | grep -qx cuda
+            /opt/ffmpeg/bin/ffmpeg -hide_banner -version | head -n 1 | grep -q "ffmpeg version 6.1.1"
+            /opt/ffmpeg/bin/ffmpeg -hide_banner -encoders 2>/dev/null | grep -q h264_nvenc
+            /opt/ffmpeg/bin/ffmpeg -hide_banner -filters 2>/dev/null | grep -q scale_cuda
+            /opt/ffmpeg/bin/ffmpeg -hide_banner -hwaccels 2>/dev/null | grep -qx cuda
           '
 
       - name: Validate MySQL clean-install migrations
