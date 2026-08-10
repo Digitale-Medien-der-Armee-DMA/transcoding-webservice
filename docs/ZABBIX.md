@@ -42,6 +42,8 @@ JSONPath-Vorschlaege:
 | Queue video waiting | `$.queues.video.waiting` | numeric unsigned |
 | Queue video running | `$.queues.video.running` | numeric unsigned |
 | Queue video oldest age | `$.queues.video.oldest_waiting_age_seconds` | numeric unsigned |
+
+For Redis queues, `waiting` is the sum of immediate and delayed jobs, while `running` is the number of reserved jobs. `oldest_waiting_age_seconds` is derived from the payload creation timestamp added by the application.
 | Workers total | `$.workers.total` | numeric unsigned |
 | Workers stale | `$.workers.stale` | numeric unsigned |
 | Worker stale threshold | `$.workers.stale_after_seconds` | numeric unsigned |

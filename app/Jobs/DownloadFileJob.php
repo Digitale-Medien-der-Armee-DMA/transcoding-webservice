@@ -3,19 +3,15 @@
 namespace App\Jobs;
 
 use App\Models\Download;
-use App\Models\DownloadJob;
 use App\Models\Video;
 use App\Models\User;
 use App\Services\Security\MediaPathGuard;
 use GuzzleHttp\RequestOptions;
 use Illuminate\Bus\Queueable;
-use Illuminate\Queue\Jobs\Job;
-use Illuminate\Queue\Queue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use GuzzleHttp\Client;
@@ -27,6 +23,8 @@ class DownloadFileJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $download;
+
+    public $deleteWhenMissingModels = true;
 
     public function __construct(Download $download)
     {
@@ -202,20 +200,4 @@ class DownloadFileJob implements ShouldQueue
         Log::debug("Exiting " . __METHOD__);
     }
 
-    public static function killAssociatedJobs($download_id)
-    {
-        Log::debug("Entering " . __METHOD__);
-        $downloadJobs = DownloadJob::where('download_id', '=', $download_id);
-        foreach ($downloadJobs as $downloadJob) {
-            $job = DB::table('jobs')->where('id', '=', $downloadJob->job_id)->first();
-            Log::info('Deleting job ' . $job->id);
-            try {
-                $downloadJob->delete();
-                $job->delete();
-            } catch (\Exception $exception) {
-                echo $exception->getMessage();
-            }
-        }
-        Log::debug("Exiting " . __METHOD__);
-    }
 }

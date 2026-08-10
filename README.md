@@ -60,7 +60,11 @@ DB_USERNAME=transcoding_webservice
 DB_PASSWORD=<set-me>
 
 QUEUE_CONNECTION=redis
+QUEUE_REDIS_BLOCK_FOR=5
 REDIS_HOST=redis
+WORKER_DOWNLOAD_NAME=worker-download
+WORKER_VIDEO_NAME=worker-video-gpu
+WORKER_VIDEO_RETRY_BACKOFF_SECONDS=30
 ADMIN_UPLOADS_ENABLED=false
 SECURITY_LOG_SCRUBBING_ENABLED=true
 ```
@@ -111,6 +115,7 @@ Expected:
 - Live health returns HTTP 200 and `status=ok`.
 - Ready health returns HTTP 200 and `status=ok`.
 - Metrics returns JSON for queue, worker, storage, runtime, and transcoding signals.
+- Redis queue metrics include immediate and delayed jobs as `waiting` and reserved jobs as `running`.
 
 ## FFmpeg Smoke Tests
 

@@ -34,6 +34,7 @@ WORKER_DOWNLOAD_MEMORY=768
 
 WORKER_VIDEO_SLEEP=5
 WORKER_VIDEO_TRIES=2
+WORKER_VIDEO_RETRY_BACKOFF_SECONDS=30
 WORKER_VIDEO_MEMORY=1024
 ```
 
@@ -41,7 +42,14 @@ Videojobs starten konservativer, weil ein erneuter Versuch GPU-Zeit blockiert un
 
 ## Heartbeat
 
-Queue-Events aktualisieren die Tabelle `workers` vor und nach Jobs sowie bei fehlgeschlagenen Jobs:
+Der Queue-Loop und die Queue-Events aktualisieren die Tabelle `workers`. Damit bleiben auch Worker sichtbar, die gerade keinen Job verarbeiten. Die Compose-Services verwenden stabile Namen:
+
+```env
+WORKER_DOWNLOAD_NAME=worker-download
+WORKER_VIDEO_NAME=worker-video-gpu
+```
+
+Gespeichert werden:
 
 - `host`
 - `description` mit IP, Queue und Job-Klasse

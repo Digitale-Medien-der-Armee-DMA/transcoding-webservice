@@ -92,7 +92,11 @@ return [
             'connection' => 'default',
             'queue' => env('REDIS_QUEUE', 'default'),
             'retry_after' => env('QUEUE_RETRY_AFTER', 90000),
-            'block_for' => env('QUEUE_REDIS_BLOCK_FOR', 5),
+            'block_for' => (static function () {
+                $blockFor = env('QUEUE_REDIS_BLOCK_FOR', 5);
+
+                return is_null($blockFor) ? null : (int) $blockFor;
+            })(),
         ],
 
     ],

@@ -6,6 +6,8 @@ use App\Services\WorkerHeartbeat;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\Looping;
+use Illuminate\Queue\Queue as BaseQueue;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
@@ -36,12 +38,20 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
         Paginator::useBootstrap();
 
+        BaseQueue::createPayloadUsing(function () {
+            return ['pushedAt' => now()->timestamp];
+        });
+
         Queue::before(function (JobProcessing $event) {
             // $event->connectionName
             // $event->job
             // $event->job->payload()
             app(WorkerHeartbeat::class)->touch($this->queueName($event->job), $this->jobName($event->job));
             Log::debug("Host: " . gethostname() . ' ' .  print_r($event->job->payload(), true));
+        });
+
+        Queue::looping(function (Looping $event) {
+            app(WorkerHeartbeat::class)->touch($event->queue);
         });
 
         Queue::after(function (JobProcessed $event) {

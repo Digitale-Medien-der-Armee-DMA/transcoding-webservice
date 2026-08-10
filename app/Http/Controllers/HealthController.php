@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Video;
+use App\Services\QueueMetrics;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -157,42 +158,7 @@ class HealthController extends Controller
 
     private function queueMetrics(): array
     {
-        $queues = [];
-
-        foreach (config('health.queue_names', []) as $queue) {
-            $queues[$queue] = [
-                'waiting' => 0,
-                'running' => 0,
-                'oldest_waiting_age_seconds' => null,
-            ];
-        }
-
-        if (!Schema::hasTable('jobs')) {
-            return $queues;
-        }
-
-        foreach (array_keys($queues) as $queue) {
-            $waiting = DB::table('jobs')
-                ->where('queue', $queue)
-                ->whereNull('reserved_at')
-                ->count();
-            $running = DB::table('jobs')
-                ->where('queue', $queue)
-                ->whereNotNull('reserved_at')
-                ->count();
-            $oldest = DB::table('jobs')
-                ->where('queue', $queue)
-                ->whereNull('reserved_at')
-                ->min('created_at');
-
-            $queues[$queue] = [
-                'waiting' => $waiting,
-                'running' => $running,
-                'oldest_waiting_age_seconds' => $oldest ? max(0, Carbon::now()->timestamp - (int) $oldest) : null,
-            ];
-        }
-
-        return $queues;
+        return app(QueueMetrics::class)->collect(config('health.queue_names', []));
     }
 
     private function workerMetrics(): array

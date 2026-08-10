@@ -12,10 +12,10 @@ class ExampleTest extends TestCase
      *
      * @return void
      */
-    public function testBasicTest()
+    public function test_root_redirects_to_admin_login()
     {
         $response = $this->get('/');
 
-        $response->assertStatus(200);
+        $response->assertRedirect(admin_url('auth/login'));
     }
 }

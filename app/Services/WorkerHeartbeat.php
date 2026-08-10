@@ -20,7 +20,7 @@ class WorkerHeartbeat
                 return;
             }
 
-            $host = gethostname() ?: 'unknown';
+            $host = config('workers.heartbeat.name') ?: (gethostname() ?: 'unknown');
             $now = Carbon::now();
             $values = [
                 'description' => $this->description($queue, $job),
