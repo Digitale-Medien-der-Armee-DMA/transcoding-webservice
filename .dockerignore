@@ -4,6 +4,7 @@
 .vscode
 node_modules
 vendor
+bootstrap/cache/*.php
 storage/app/public/uploaded/*
 storage/app/public/converted/*
 storage/framework/cache/data/*
