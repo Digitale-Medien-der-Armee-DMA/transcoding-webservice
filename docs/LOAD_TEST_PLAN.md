@@ -71,6 +71,8 @@ docker compose --env-file .env -f compose.yaml ps
 docker compose --env-file .env -f compose.yaml logs --tail=200 worker-download
 docker compose --env-file .env -f compose.yaml logs --tail=200 worker-video-gpu
 nvidia-smi --query-gpu=timestamp,utilization.gpu,utilization.encoder,memory.used,memory.free --format=csv
+docker compose --env-file .env -f compose.yaml exec worker-video-gpu \
+  sh -lc 'ps -eo pid,etime,%cpu,%mem,args | grep "[f]fmpeg"'
 ```
 
 Zusaetzlich dokumentieren:
@@ -78,6 +80,7 @@ Zusaetzlich dokumentieren:
 - Start-/Endzeit je Mediakey.
 - Dateigroesse.
 - Zielprofil.
+- Effektiver Encoder und Filter (`h264_nvenc` und `scale_cuda` fuer den GPU-Lauf).
 - Queue-Wartezeit.
 - Transcode-Dauer.
 - Callback-Ergebnis.
@@ -92,6 +95,8 @@ Der Lasttest ist bestanden, wenn:
 - Keine Worker unerwartet stale bleiben.
 - Keine Tokens oder Authorization-Werte in Logs auftauchen.
 - GPU-Smoke und Lastszenarien keine NVENC-/CUDA-Grundsatzfehler zeigen.
+- NVIDIA Encoder-Auslastung waehrend GPU-Jobs ueber null steigt.
+- GPU-Durchsatz und Worker-CPU gegen die dokumentierte CPU-Baseline in `docs/GPU_BENCHMARK.md` erfasst sind.
 - Storage-Wachstum erklaert und durch Retention/Delete-Flow beherrschbar ist.
 
 Blockierend fuer Cutover:

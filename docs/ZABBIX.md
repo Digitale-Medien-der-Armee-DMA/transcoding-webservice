@@ -49,6 +49,11 @@ For Redis queues, `waiting` is the sum of immediate and delayed jobs, while `run
 | Worker stale threshold | `$.workers.stale_after_seconds` | numeric unsigned |
 | GPU guard enabled | `$.workers.gpu_guard.enabled` | text or numeric preprocessing |
 | GPU guard min free MB | `$.workers.gpu_guard.min_free_mb` | numeric unsigned |
+| GPU worker status | `$.workers.gpu_worker.status` | text |
+| GPU worker last seen | `$.workers.gpu_worker.last_seen_at` | text |
+| GPU worker FFmpeg | `$.workers.gpu_worker.runtime.ffmpeg_version` | text |
+| GPU worker encoder | `$.workers.gpu_worker.runtime.video_encoder` | text |
+| GPU worker filter | `$.workers.gpu_worker.runtime.video_filter` | text |
 | Uploaded free bytes | `$.storage.uploaded.free_bytes` | numeric unsigned |
 | Converted free bytes | `$.storage.converted.free_bytes` | numeric unsigned |
 | Running transcodes | `$.transcoding.running_jobs` | numeric unsigned |
@@ -73,6 +78,8 @@ Konservative Startwerte:
 | Old download job | `queues.download.oldest_waiting_age_seconds > 900` | Average |
 | Old video job | `queues.video.oldest_waiting_age_seconds > 1800` | Average |
 | Stale worker | `workers.stale > 0` fuer 2 Checks | High |
+| GPU worker unavailable | `workers.gpu_worker.status != ok` fuer 2 Checks | High |
+| GPU runtime mismatch | Encoder ist nicht `h264_nvenc` oder Filter ist nicht `scale_cuda` | High |
 | Failed jobs increasing | `transcoding.failed_jobs` steigt innerhalb von 10 Minuten | Average |
 | Error rate high | `transcoding.error_rate > 0.1` fuer 15 Minuten | Average |
 | Uploaded storage low | `storage.uploaded.free_bytes < 20G` | Average |

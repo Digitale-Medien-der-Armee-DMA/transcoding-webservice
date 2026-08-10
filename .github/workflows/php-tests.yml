@@ -45,6 +45,8 @@ jobs:
       - name: Validate smoke scripts
         run: |
           sh -n docker/production/ffmpeg-smoke.sh
+          sh -n docker/production/gpu-worker-entrypoint.sh
+          sh -n scripts/runtime/gpu-worker-preflight.sh
           sh -n scripts/smoke/ffmpeg-cpu-smoke.sh
           sh -n scripts/smoke/ffmpeg-gpu-smoke.sh
 
@@ -81,6 +83,19 @@ jobs:
         run: |
           docker compose --env-file .env -f compose.yaml build app
           docker compose --env-file .env -f compose.yaml run --rm -T --no-deps --entrypoint php app -r 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); exit(extension_loaded("redis") && phpversion("redis") === "6.0.2" && is_int(config("queue.connections.redis.block_for")) ? 0 : 1);'
+
+      - name: Build production GPU worker runtime
+        run: docker compose --env-file .env -f compose.yaml build worker-video-gpu
+
+      - name: Validate production GPU worker capabilities
+        run: |
+          docker run --rm --entrypoint sh transcoding-webservice-worker-gpu:local -lc '
+            php -r '\''exit(extension_loaded("redis") && phpversion("redis") === "6.0.2" ? 0 : 1);'\''
+            ffmpeg -hide_banner -version | head -n 1 | grep -q "ffmpeg version 6.1.1"
+            ffmpeg -hide_banner -encoders 2>/dev/null | grep -q h264_nvenc
+            ffmpeg -hide_banner -filters 2>/dev/null | grep -q scale_cuda
+            ffmpeg -hide_banner -hwaccels 2>/dev/null | grep -qx cuda
+          '
 
       - name: Validate MySQL clean-install migrations
         env:

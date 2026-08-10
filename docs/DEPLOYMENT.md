@@ -19,6 +19,7 @@ Before production acceptance, complete:
 - Production uses an external database.
 - The bundled Redis service may be used unless an external Redis endpoint is provided.
 - GPU access is limited to `worker-video-gpu`.
+- The GPU worker uses its own pinned FFmpeg 6.1.1 image and fails startup when its NVIDIA runtime contract is unavailable.
 - Admin uploads remain disabled.
 
 ## Preflight
@@ -129,6 +130,14 @@ GPU smoke:
 docker compose --env-file .env --profile gpu-smoke -f compose.yaml run --rm ffmpeg-smoke-gpu
 ```
 
+After the worker has entered its queue loop, verify the runtime heartbeat:
+
+```bash
+curl -fsS "$APP_URL/internal/metrics"
+```
+
+Expected fields include `workers.gpu_worker.status=ok`, FFmpeg `6.1.1`, encoder `h264_nvenc`, and filter `scale_cuda`.
+
 Production is accepted only when:
 
 - Ready health is green.
@@ -136,6 +145,7 @@ Production is accepted only when:
 - Workers and scheduler are running.
 - CPU smoke passes.
 - GPU smoke passes if GPU production is planned.
+- A live VIMP GPU job uses `h264_nvenc`, raises NVIDIA encoder utilization above zero, and produces valid MP4/HLS callbacks.
 - VIMP staging flow passes.
 - No API tokens or authorization values appear in logs.
 

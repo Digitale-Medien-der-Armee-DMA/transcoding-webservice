@@ -188,6 +188,8 @@ GPU smoke on the NVIDIA target host:
 docker compose --env-file .env --profile gpu-smoke -f compose.yaml run --rm ffmpeg-smoke-gpu
 ```
 
+This smoke runs the exact `worker-video-gpu` image. Do not assign the `h264_nvenc` profile to the VIMP user until it passes. After startup, `/internal/metrics` must report the GPU worker runtime as healthy.
+
 GPU production use is blocked until the GPU smoke test passes on the target host.
 
 ## Next Steps

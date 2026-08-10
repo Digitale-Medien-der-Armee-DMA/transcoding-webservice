@@ -100,6 +100,29 @@ class WorkerGuardrailsTest extends TestCase
         $this->assertDatabaseHas('workers', ['host' => 'worker-video-gpu']);
     }
 
+    public function test_gpu_worker_heartbeat_reports_its_validated_runtime(): void
+    {
+        config([
+            'workers.heartbeat.enabled' => true,
+            'workers.heartbeat.name' => 'worker-video-gpu',
+            'workers.runtime.role' => 'gpu-video',
+            'workers.runtime.ffmpeg_version' => '6.1.1',
+            'workers.runtime.video_encoder' => 'h264_nvenc',
+            'workers.runtime.video_filter' => 'scale_cuda',
+        ]);
+
+        app(WorkerHeartbeat::class)->touch('video', 'App\\Jobs\\ConvertVideoJob');
+
+        $description = json_decode(DB::table('workers')->value('description'), true);
+
+        $this->assertSame('gpu-video', $description['role']);
+        $this->assertSame([
+            'ffmpeg_version' => '6.1.1',
+            'video_encoder' => 'h264_nvenc',
+            'video_filter' => 'scale_cuda',
+        ], $description['runtime']);
+    }
+
     private function fakeNvidiaSmi(string $output): string
     {
         $directory = storage_path('framework/testing');

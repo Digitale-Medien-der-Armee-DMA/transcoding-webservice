@@ -27,7 +27,7 @@ For a CPU-only bootstrap or documentation review, do not start the GPU worker. F
 - `web`: nginx frontend.
 - `app`: PHP-FPM/Laravel runtime.
 - `worker-download`: queue worker for download jobs.
-- `worker-video-gpu`: queue worker for video jobs with NVIDIA GPU reservation.
+- `worker-video-gpu`: dedicated PHP 7.4/FFmpeg 6.1.1 queue worker with NVENC, CUDA scaling, startup preflight, and NVIDIA GPU reservation.
 - `scheduler`: Laravel scheduler loop.
 - `redis`: Redis queue/cache service.
 - `ffmpeg-smoke-cpu`: optional CPU FFmpeg smoke test profile.
@@ -65,6 +65,7 @@ REDIS_HOST=redis
 WORKER_DOWNLOAD_NAME=worker-download
 WORKER_VIDEO_NAME=worker-video-gpu
 WORKER_VIDEO_RETRY_BACKOFF_SECONDS=30
+GPU_WORKER_PREFLIGHT=true
 ADMIN_UPLOADS_ENABLED=false
 SECURITY_LOG_SCRUBBING_ENABLED=true
 ```
@@ -131,7 +132,7 @@ GPU smoke on an NVIDIA host:
 docker compose --env-file .env --profile gpu-smoke -f compose.yaml run --rm ffmpeg-smoke-gpu
 ```
 
-GPU production use is not accepted until the GPU smoke test passes on the target host.
+The GPU smoke uses the exact production worker image and validates CUDA decode/scaling plus NVENC MP4 and HLS output. GPU production use is not accepted until it passes on the target host.
 
 ## VIMP Compatibility
 
@@ -156,6 +157,8 @@ Do not change API behavior without contract tests and explicit approval.
 - [Release checklist](docs/RELEASE_CHECKLIST.md)
 - [Recovery plan](docs/ROLLBACK_PLAN.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [GPU runtime](docs/FFMPEG_NVIDIA.md)
+- [GPU benchmark](docs/GPU_BENCHMARK.md)
 - [Upgrade notes](docs/UPGRADE_NOTES.md)
 
 ## Development Validation

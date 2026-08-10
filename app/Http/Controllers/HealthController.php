@@ -170,6 +170,7 @@ class HealthController extends Controller
                 'stale_after_seconds' => (int) config('health.worker_stale_after_seconds'),
                 'heartbeat_enabled' => (bool) config('workers.heartbeat.enabled', true),
                 'gpu_guard' => $this->gpuGuardMetrics(),
+                'gpu_worker' => $this->gpuWorkerMetrics(),
             ];
         }
 
@@ -187,6 +188,33 @@ class HealthController extends Controller
             'stale_after_seconds' => $staleAfter,
             'heartbeat_enabled' => (bool) config('workers.heartbeat.enabled', true),
             'gpu_guard' => $this->gpuGuardMetrics(),
+            'gpu_worker' => $this->gpuWorkerMetrics($staleBefore),
+        ];
+    }
+
+    private function gpuWorkerMetrics(?Carbon $staleBefore = null): array
+    {
+        $name = (string) config('workers.gpu_worker.name', 'worker-video-gpu');
+
+        if (!Schema::hasTable('workers')) {
+            return ['name' => $name, 'status' => 'missing', 'last_seen_at' => null, 'runtime' => null];
+        }
+
+        $worker = DB::table('workers')->where('host', $name)->first();
+
+        if (!$worker) {
+            return ['name' => $name, 'status' => 'missing', 'last_seen_at' => null, 'runtime' => null];
+        }
+
+        $description = json_decode((string) $worker->description, true);
+        $lastSeen = $worker->last_seen_at ? Carbon::parse($worker->last_seen_at) : null;
+        $staleBefore = $staleBefore ?: Carbon::now()->subSeconds((int) config('health.worker_stale_after_seconds'));
+
+        return [
+            'name' => $name,
+            'status' => !$lastSeen || $lastSeen->lt($staleBefore) ? 'stale' : 'ok',
+            'last_seen_at' => $lastSeen ? $lastSeen->toIso8601String() : null,
+            'runtime' => is_array($description) ? ($description['runtime'] ?? null) : null,
         ];
     }
 

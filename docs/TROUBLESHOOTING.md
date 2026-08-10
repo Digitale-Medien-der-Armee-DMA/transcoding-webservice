@@ -94,6 +94,33 @@ docker compose --env-file .env --profile gpu-smoke -f compose.yaml run --rm ffmp
 
 Wenn GPU-Smoke fehlschlaegt, zuerst Host-Treiber und NVIDIA Container Toolkit pruefen.
 
+## GPU worker exits during startup
+
+The dedicated worker intentionally exits when its preflight fails. Inspect the exact reason:
+
+```bash
+docker compose --env-file .env -f compose.yaml logs --tail=200 worker-video-gpu
+docker compose --env-file .env -f compose.yaml run --rm --no-deps \
+  --entrypoint gpu-worker-preflight worker-video-gpu
+```
+
+Expected success reports `encoder=h264_nvenc` and `filter=scale_cuda`. A missing `nvidia-smi` or invisible device points to NVIDIA Container Toolkit or Compose device reservation. A missing encoder/filter means the wrong or stale worker image is running; rebuild `worker-video-gpu` from the current commit.
+
+## GPU worker encodes on CPU
+
+Inspect the live process:
+
+```bash
+docker compose --env-file .env -f compose.yaml exec worker-video-gpu \
+  sh -lc 'ps -eo pid,etime,%cpu,%mem,args | grep "[f]fmpeg"'
+```
+
+- `-vcodec libx264` means the VIMP webservice user is assigned the CPU profile or the second-attempt fallback is active.
+- `-vcodec h264_nvenc` confirms the GPU encoder selection.
+- Encoder utilization remaining at zero with `h264_nvenc` requires the production GPU smoke and worker logs to be checked before further jobs are accepted.
+
+The previous CPU-only production image exposed FFmpeg 4.3 without CUDA/NVENC. `video_backoff=null` or a `DownloadJob::create` stack trace also identifies a stale pre-PR17 image rather than the current runtime.
+
 ## Worker sind stale
 
 Diagnose:
