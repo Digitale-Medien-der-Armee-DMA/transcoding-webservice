@@ -5,10 +5,8 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use App\Models\Download;
-use App\Models\Video;
-use GuzzleHttp\RequestOptions;
-use GuzzleHttp\Client;
-use App\Models\User;
+use App\Services\VimpCallbackOutbox;
+use App\Services\VimpDownloadFinalizer;
 
 class CleanupTranscode extends Command
 {
@@ -40,35 +38,24 @@ class CleanupTranscode extends Command
     public function handle()
     {
         Log::debug("Entering " . __METHOD__);
-        $downloads = Download::where('processed', '=', Download::PROCESSING)->get();
-        foreach ($downloads as $download) {
-            $videos = $download->videos()->get()->all();
-            foreach ($videos as $video) {
-                $total = $video->count();
-                $processed = $video->where('processed', Video::PROCESSED)->whereNotNull('downloaded_at')->count();
-                if ($total === $processed) {
-                    if ($download->processed === Download::PROCESSING) {
-                        Log::info('All downloads are complete for mediakey ' . $video->mediakey . " ($processed of $total)");
-                        $download->update(['processed' => Download::PROCESSED]);
-                    }
-                }
-            }
-        }
+        $finalizer = app(VimpDownloadFinalizer::class);
 
-        $downloads = Download::where('processed', '=', Download::PROCESSED)->get();
-        foreach ($downloads as $download) {
-            $user = User::find($download->user_id);
-            $api_token = $user->api_token;
-            $url = $user->url . '/transcoderwebservice/callback';
-            $guzzle = new Client();
-            $response = $guzzle->post($url, [
-                RequestOptions::JSON => [
-                    'api_token' => $api_token,
-                    'mediakey' => $download->mediakey,
-                    'finished' => true
-                ]
-            ]);
-            Log::debug(__METHOD__ .': '. $response->getReasonPhrase());
+        Download::where('processed', Download::PROCESSING)
+            ->orderBy('id')
+            ->each(function (Download $download) use ($finalizer) {
+                $finalizer->finalizeIfComplete($download->id);
+            });
+
+        Download::where('processed', Download::PROCESSED)
+            ->orderBy('id')
+            ->each(function (Download $download) use ($finalizer) {
+                $finalizer->ensureFinishedCallback($download);
+            });
+
+        $dispatched = app(VimpCallbackOutbox::class)->dispatchDue();
+
+        if ($dispatched > 0) {
+            Log::info('Dispatched due ViMP callbacks', ['count' => $dispatched]);
         }
         Log::debug("Exiting " . __METHOD__);
     }

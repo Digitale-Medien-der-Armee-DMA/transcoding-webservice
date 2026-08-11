@@ -39,6 +39,9 @@ JSONPath-Vorschlaege:
 | Queue download waiting | `$.queues.download.waiting` | numeric unsigned |
 | Queue download running | `$.queues.download.running` | numeric unsigned |
 | Queue download oldest age | `$.queues.download.oldest_waiting_age_seconds` | numeric unsigned |
+| Queue callback waiting | `$.queues.callback.waiting` | numeric unsigned |
+| Queue callback running | `$.queues.callback.running` | numeric unsigned |
+| Queue callback oldest age | `$.queues.callback.oldest_waiting_age_seconds` | numeric unsigned |
 | Queue video waiting | `$.queues.video.waiting` | numeric unsigned |
 | Queue video running | `$.queues.video.running` | numeric unsigned |
 | Queue video oldest age | `$.queues.video.oldest_waiting_age_seconds` | numeric unsigned |
@@ -61,6 +64,11 @@ For Redis queues, `waiting` is the sum of immediate and delayed jobs, while `run
 | Failed videos | `$.transcoding.failed_videos` | numeric unsigned |
 | Transcoding error rate | `$.transcoding.error_rate` | numeric float |
 | Last successful transcode | `$.transcoding.last_successful_transcoding_at` | text |
+| Pending callbacks | `$.callbacks.pending` | numeric unsigned |
+| Failed callbacks | `$.callbacks.failed` | numeric unsigned |
+| Sent callbacks | `$.callbacks.sent` | numeric unsigned |
+| Oldest unsent callback | `$.callbacks.oldest_unsent_at` | text |
+| Last sent callback | `$.callbacks.last_sent_at` | text |
 | PHP version | `$.runtime.php_version` | text |
 | FFmpeg available | `$.runtime.ffmpeg.ffmpeg.available` | text or numeric preprocessing |
 | FFprobe available | `$.runtime.ffmpeg.ffprobe.available` | text or numeric preprocessing |
@@ -74,6 +82,8 @@ Konservative Startwerte:
 | Live endpoint down | HTTP status von live != 200 fuer 2 Checks | High |
 | Ready endpoint failed | HTTP status von ready != 200 fuer 2 Checks | High |
 | Download queue backlog | `queues.download.waiting > 10` fuer 10 Minuten | Warning |
+| Callback queue backlog | `queues.callback.waiting > 10` fuer 10 Minuten | Average |
+| Failed callbacks | `callbacks.failed > 0` fuer 10 Minuten | Average |
 | Video queue backlog | `queues.video.waiting > 5` fuer 15 Minuten | Warning |
 | Old download job | `queues.download.oldest_waiting_age_seconds > 900` | Average |
 | Old video job | `queues.video.oldest_waiting_age_seconds > 1800` | Average |

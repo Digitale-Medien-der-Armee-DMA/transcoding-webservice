@@ -37,7 +37,7 @@ Before recovery, prevent new work:
 
 ```bash
 docker compose --env-file .env -f compose.yaml stop scheduler
-docker compose --env-file .env -f compose.yaml stop worker-download worker-video-gpu
+docker compose --env-file .env -f compose.yaml stop worker-download worker-callback worker-video-gpu
 ```
 
 If jobs are active, document whether they are allowed to finish or are intentionally interrupted.
@@ -50,7 +50,7 @@ Return to the approved commit:
 git fetch origin master
 git checkout <approved-sha>
 docker compose --env-file .env -f compose.yaml build
-docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download
+docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download worker-callback
 ```
 
 On a GPU host, start the GPU worker only after smoke validation:

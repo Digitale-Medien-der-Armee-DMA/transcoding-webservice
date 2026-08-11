@@ -139,21 +139,34 @@ Moegliche Ursachen:
 - Lange Jobs ohne Heartbeat-Update.
 - Worker nach Deployment nicht wieder gestartet.
 
-## Finaler VIMP-Callback fehlt
+## VIMP callback is missing or returns 404
 
-Diagnose:
+Inspect callback state and worker logs first:
 
 ```bash
-docker compose --env-file .env -f compose.yaml logs --tail=200 scheduler
-docker compose --env-file .env -f compose.yaml exec app php artisan schedule:run --verbose --no-interaction
+curl -fsS "$APP_URL/internal/metrics"
+docker compose --env-file .env -f compose.yaml logs --tail=200 worker-callback
+docker compose --env-file .env -f compose.yaml exec app \
+  php artisan vimp:callbacks-replay --mediakey=<mediakey> --dry-run
 ```
 
-Moegliche Ursachen:
+The callback record contains the HTTP status and a truncated, token-scrubbed response. A failed callback does not mean encoding failed and must not cause the GPU job to be retried.
 
-- Scheduler laeuft nicht.
-- `transcode:cleanup` kann VIMP nicht erreichen.
-- Finished-Endpunkte wurden nicht fuer alle Artefakte aufgerufen.
-- Downloadstatus bleibt `PROCESSING`.
+For a controlled 404 diagnosis, preview each probe before adding `--send`:
+
+```bash
+docker compose --env-file .env -f compose.yaml exec app php artisan vimp:callback-probe <callback-id> --variant=minimal
+docker compose --env-file .env -f compose.yaml exec app php artisan vimp:callback-probe <callback-id> --variant=label-only
+docker compose --env-file .env -f compose.yaml exec app php artisan vimp:callback-probe <callback-id> --variant=source-url
+```
+
+- `minimal=200` and `label-only=404` points to ViMP medium/label lookup.
+- `label-only=200` and `current=404` requires testing URL reachability from the ViMP host.
+- `source-url=200` while `current=404` strongly points to the generated artifact URL or its scheme/host/port.
+
+Only after this evidence should `VIMP_ARTIFACT_BASE_URL`, `VIMP_CALLBACK_LABEL_MAP`, `VIMP_CALLBACK_MEDIUM_FIELDS`, or `VIMP_CALLBACK_INCLUDE_PROPERTIES` be changed. Defaults preserve the historical payload.
+
+The final `finished=true` callback is queued after ViMP calls `/api/download/{filename}/finished` for every generated artifact. If it is missing, verify those acknowledgements, `worker-callback`, and the scheduler.
 
 ## Admin-Uploads werden abgelehnt
 

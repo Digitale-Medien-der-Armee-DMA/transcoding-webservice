@@ -8,21 +8,18 @@ use App\Models\Download;
 use App\Models\Profile;
 use App\Models\Video;
 use App\Models\User;
+use App\Models\VimpCallback;
 use App\Services\Security\MediaPathGuard;
 use App\Services\VideoFilterGraph;
+use App\Services\VimpCallbackOutbox;
+use App\Services\VimpCallbackPayloadBuilder;
 use App\Services\WorkerHeartbeat;
 use Carbon\Carbon;
 use Exception;
 use FFMpeg\Filters\Frame\CustomFrameFilter;
-use GuzzleHttp\Client;
-use GuzzleHttp\RequestOptions;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use FFMpeg;
 use FFMpeg\Coordinate\Dimension;
 use ZipArchive;
@@ -183,24 +180,12 @@ class TranscodingController extends Controller
                 'worker' => $this->worker
             ]);
 
-            $guzzle = new Client();
-
-            $response = $guzzle->post($this->user->url . self::TRANSCODERWEBSERVICE_CALLBACK, [
-                RequestOptions::JSON => [
-                    'api_token' => $this->user->api_token,
-                    'mediakey' => $this->video->mediakey,
-                    'thumbnail' => [
-                        'url' => route('getFile', $converted_name)
-                    ]
-                ]
-            ]);
-
-            Log::debug(__METHOD__ . ': ' . $response->getReasonPhrase());
-
-            if ($this->downloadComplete() && $this->video->download()->get('processed')) {
-                $this->video->download()->update(['processed' => Download::PROCESSED]);
-                $this->executeFinalCallback();
-            }
+            $this->enqueuePreparedCallback(
+                VimpCallback::TYPE_THUMBNAIL,
+                function () {
+                    return app(VimpCallbackPayloadBuilder::class)->thumbnail($this->video->fresh());
+                }
+            );
         }
         else {
             Log::debug("File " . $videofile . ' is not readable, please check permissions of the storage folder');
@@ -259,25 +244,12 @@ class TranscodingController extends Controller
                 'worker' => $this->worker
             ]);
 
-            $guzzle = new Client();
-
-            $response = $guzzle->post($this->user->url . self::TRANSCODERWEBSERVICE_CALLBACK, [
-                RequestOptions::JSON => [
-                    'api_token' => $this->user->api_token,
-                    'mediakey' => $this->video->mediakey,
-                    'spritemap' => [
-                        'count' => $spritemap['count'],
-                        'url' => route('getFile', $converted_name)
-                    ]
-                ]
-            ]);
-
-            Log::debug(__METHOD__ . ': ' . $response->getReasonPhrase());
-
-            if ($this->downloadComplete() && $this->video->download()->get('processed')) {
-                $this->video->download()->update(['processed' => Download::PROCESSED]);
-                $this->executeFinalCallback();
-            }
+            $this->enqueuePreparedCallback(
+                VimpCallback::TYPE_SPRITEMAP,
+                function () {
+                    return app(VimpCallbackPayloadBuilder::class)->spritemap($this->video->fresh());
+                }
+            );
         }
         else {
             Log::debug("File " . $videofile . ' is not readable, please check permissions of the storage folder');
@@ -320,128 +292,42 @@ class TranscodingController extends Controller
     public function executeCallback()
     {
         Log::debug("Entering " . __METHOD__);
-        $guzzle = new Client();
-        $api_token = $this->user->api_token;
-        $url = $this->user->url . self::TRANSCODERWEBSERVICE_CALLBACK;
+        $this->enqueuePreparedCallback(VimpCallback::TYPE_MEDIUM, function () {
+            $video = $this->video->fresh();
+            $payloads = app(VimpCallbackPayloadBuilder::class);
 
-        if ($this->getHLS())
-        {
-            $archiveFile = $this->createHLSArchive();
-
-            $requestOptions = array(
-                RequestOptions::JSON => [
-                    'api_token' => $api_token,
-                    'mediakey' => $this->video->mediakey,
-                    'medium' => [
-                        'label' => $this->video->target['label'],
-                        'url' => route('getFile', $archiveFile),
-                        'hls' => true,
-                        'vbr' => $this->video->target['vbr'],
-                        'abr' => $this->video->target['abr'],
-                        'size' => $this->video->target['size'],
-                        'extension' => $this->video->target['extension'],
-                        'created_at' => $this->video->target['created_at'],
-                        'default' => $this->video->target['default'] ?? false,
-                        'checksum' => md5_file(Storage::disk('converted')->path($archiveFile))
-                    ]
-                ]);
-        }
-        else {
-            $ffprobe = FFMpeg\FFProbe::create();
-            if(self::getFFmpegConfig()['ffprobe.debug']) {
-                $ffprobe->getFFProbeDriver()->listen(new DebugListener());
-                $ffprobe->getFFProbeDriver()->on('debug', function ($message) {
-                    Log::info('FFprobe: ' . $message);
-                });
+            if ($this->getHLS()) {
+                return $payloads->hlsMedium($video, $this->createHLSArchive());
             }
 
-            $source_format = $ffprobe
-                ->streams(Storage::disk('uploaded')->path($this->video->path))
-                ->videos()
-                ->first();
-
-            $target_format = $ffprobe
-                ->streams(Storage::disk('converted')->path($this->getTargetFileName()))
-                ->videos()
-                ->first();
-
-            $tags = $target_format->get('tags');
-            $orientation = empty($tags['rotate']) ? 0 : (int) $tags['rotate'];
-
-            $requestOptions = array(
-                RequestOptions::JSON => [
-                    'api_token' => $api_token,
-                    'mediakey' => $this->video->mediakey,
-                    'medium' => [
-                        'label' => $this->video->target['label'],
-                        'url' => route('getFile', $this->getTargetFileName()),
-                        'checksum' => md5_file(Storage::disk('converted')->path($this->getTargetFileName())),
-                        'default' => $this->video->target['default'] ?? false
-                    ],
-                    'properties' => [
-                        'source_width' => $source_format->get('width'),
-                        'source_height' => $source_format->get('height'),
-                        'duration' => round($target_format->get('duration'), 0),
-                        'filesize' => filesize(Storage::disk('converted')->path($this->getTargetFileName())),
-                        'width' => $target_format->get('width'),
-                        'height' => $target_format->get('height'),
-                        'orientation' => $orientation,
-                        'vbitrate' => $target_format->get('bit_rate'),
-                        'source_is360video' => $this->check360Video($source_format)
-                    ]
-                ]);
-        }
-
-        $response = $guzzle->post($url, $requestOptions);
-
-        Log::debug(__METHOD__ .': '. $response->getReasonPhrase());
-        if ($this->downloadComplete() && $this->video->download()->get('processed'))
-        {
-            $this->video->download()->update(['processed' => Download::PROCESSED]);
-            $this->executeFinalCallback();
-        }
+            return $payloads->medium($video);
+        });
         Log::debug("Exiting " . __METHOD__);
     }
 
     public function executeFinalCallback()
     {
 	    Log::debug("Entering " . __METHOD__);
-        Log::info('Executing final callback for mediakey ' . $this->video->mediakey);
-        $guzzle = new Client();
-
-        $api_token = $this->user->api_token;
-        $url = $this->user->url . self::TRANSCODERWEBSERVICE_CALLBACK;
-
-        $response = $guzzle->post($url, [
-            RequestOptions::JSON => [
-                'api_token' => $api_token,
-                'mediakey' => $this->video->mediakey,
-                'finished' => true
-            ]
-        ]);
-
-        Log::debug(__METHOD__ .': '. $response->getReasonPhrase());
+        $download = $this->video->download;
+        Log::info('Queueing final callback for mediakey ' . $download->mediakey);
+        app(VimpCallbackOutbox::class)->enqueueForDownload(
+            $download,
+            VimpCallback::TYPE_FINISHED,
+            app(VimpCallbackPayloadBuilder::class)->finished($download)
+        );
 	    Log::debug("Exiting " . __METHOD__);
     }
 
     public static function executeErrorCallback($video, $message)
     {
 	    Log::debug("Entering " . __METHOD__);
-        Log::info('Executing error callback for mediakey ' . $video->mediakey);
-        $guzzle = new Client();
-
-        $user = User::find($video->user_id);
-        $api_token = $user->api_token;
-        $url = $user->url . self::TRANSCODERWEBSERVICE_CALLBACK;
-
-        $response = $guzzle->post($url, [
-            RequestOptions::JSON => [
-                'api_token' => $api_token,
-                'mediakey' => $video->mediakey,
-                'error' => [ 'message' => $message ]
-            ]
-        ]);
-        Log::debug(__METHOD__ .': '. $response->getReasonPhrase());
+        Log::info('Queueing error callback for mediakey ' . $video->mediakey);
+        $download = $video->download;
+        app(VimpCallbackOutbox::class)->enqueueForDownload(
+            $download,
+            VimpCallback::TYPE_ERROR,
+            app(VimpCallbackPayloadBuilder::class)->error($video, $message)
+        );
 	    Log::debug("Exiting " . __METHOD__);
     }
 
@@ -468,15 +354,28 @@ class TranscodingController extends Controller
         }
     }
 
-    protected function check360Video($source_format)
+    private function enqueuePreparedCallback(string $type, callable $buildPayload): void
     {
-        $is360Video = false;
-        $side_data_list = isset($source_format->get('side_data_list')[0]) ? $source_format->get('side_data_list')[0] : null;
-        if (isset($side_data_list["side_data_type"])) {
-            $side_data_type = Arr::get($side_data_list, 'side_data_type');
-            $is360Video = Str::contains($side_data_type, 'Spherical Mapping');
+        try {
+            app(VimpCallbackOutbox::class)->enqueueForVideo(
+                $this->video->fresh(),
+                $type,
+                $buildPayload()
+            );
+        } catch (Throwable $exception) {
+            app(VimpCallbackOutbox::class)->recordPreparationFailureForVideo(
+                $this->video->fresh(),
+                $type,
+                $exception
+            );
+
+            Log::error('Could not prepare ViMP callback; transcoded artifact remains available', [
+                'video_id' => $this->video->id,
+                'mediakey' => $this->video->mediakey,
+                'type' => $type,
+                'message' => $exception->getMessage(),
+            ]);
         }
-        return $is360Video;
     }
 
     protected function applyInitialParameters()

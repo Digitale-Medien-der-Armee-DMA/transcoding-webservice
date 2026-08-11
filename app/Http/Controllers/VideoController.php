@@ -8,6 +8,7 @@ use App\Models\DownloadJob;
 use App\Models\Video;
 use App\Services\Security\MediaPathGuard;
 use App\Services\Security\SourceUrlPolicy;
+use App\Services\VimpDownloadFinalizer;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use GuzzleHttp\RequestOptions;
@@ -70,13 +71,20 @@ class VideoController extends Controller
 
         Log::info('Plugin tries to set file ' . $filename . ' with user id ' . Auth::guard('api')->user()->id . ' to finished state');
 
-        $video = Video::where('file', '=', $filename)->where('user_id', '=', Auth::guard('api')->user()->id);
-        if ($video->count() === 0) {
+        $videos = Video::where('file', '=', $filename)
+            ->where('user_id', '=', Auth::guard('api')->user()->id)
+            ->get();
+
+        if ($videos->isEmpty()) {
             Log::debug("Exiting " . __METHOD__);
             return response()->json(['message' => 'File not found'])->setStatusCode(404);
         }
 
-        $video->update(['downloaded_at' => Carbon::now()]);
+        Video::whereKey($videos->pluck('id'))->update(['downloaded_at' => Carbon::now()]);
+
+        foreach ($videos->pluck('download_id')->filter()->unique() as $downloadId) {
+            app(VimpDownloadFinalizer::class)->finalizeIfComplete((int) $downloadId);
+        }
         Log::info('Video ' . $filename . ' was set to finished state');
         Log::debug("Exiting " . __METHOD__);
         return response()->json(['message' => 'ok'])->setStatusCode(200);

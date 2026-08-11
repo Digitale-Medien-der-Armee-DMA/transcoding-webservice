@@ -17,7 +17,7 @@ The GPU worker build is pinned to:
 
 FFmpeg is compiled with `cuda-llvm` on the same Debian 11 ABI as the PHP worker. NVIDIA driver libraries are not installed in the image. The host driver is injected by NVIDIA Container Toolkit through the `compute`, `utility`, and `video` capabilities.
 
-The general `app`, `worker-download`, and `scheduler` services remain on the regular application image. Only `worker-video-gpu` uses the GPU image and receives an NVIDIA device reservation.
+The general `app`, `worker-download`, `worker-callback`, and `scheduler` services remain on the regular application image. Only `worker-video-gpu` uses the GPU image and receives an NVIDIA device reservation.
 
 ## Startup Preflight
 

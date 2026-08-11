@@ -75,7 +75,7 @@ docker compose --env-file .env -f compose.yaml ps
 For CPU-only bootstrap:
 
 ```bash
-docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download
+docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download worker-callback
 docker compose --env-file .env -f compose.yaml ps
 ```
 
@@ -115,6 +115,7 @@ Containers:
 docker compose --env-file .env -f compose.yaml ps
 docker compose --env-file .env -f compose.yaml logs --tail=200 app
 docker compose --env-file .env -f compose.yaml logs --tail=200 worker-download
+docker compose --env-file .env -f compose.yaml logs --tail=200 worker-callback
 docker compose --env-file .env -f compose.yaml logs --tail=200 worker-video-gpu
 ```
 
@@ -141,8 +142,9 @@ Expected fields include `workers.gpu_worker.status=ok`, FFmpeg `6.1.1`, encoder 
 Production is accepted only when:
 
 - Ready health is green.
-- Metrics expose DB, queue, worker, storage, and FFmpeg signals.
+- Metrics expose DB, queue, worker, storage, FFmpeg, and callback-delivery signals.
 - Workers and scheduler are running.
+- The callback worker is running and `queues.callback` returns to zero.
 - CPU smoke passes.
 - GPU smoke passes if GPU production is planned.
 - A live VIMP GPU job uses `h264_nvenc`, raises NVIDIA encoder utilization above zero, and produces valid MP4/HLS callbacks.

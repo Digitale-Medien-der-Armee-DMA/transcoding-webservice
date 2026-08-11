@@ -48,7 +48,7 @@ docker compose --env-file .env -f compose.yaml up -d
 For CPU-only staging:
 
 ```bash
-docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download
+docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download worker-callback
 ```
 
 Run migrations against the fresh database:
@@ -73,7 +73,7 @@ Expected:
 - Required containers are running.
 - Live health is `ok`.
 - Ready health is `ok` or has only explicitly accepted staging deviations.
-- Metrics contain DB, queue, storage, worker, runtime, and FFmpeg signals.
+- Metrics contain DB, queue, storage, worker, runtime, FFmpeg, and callback signals.
 
 ## FFmpeg Smoke
 

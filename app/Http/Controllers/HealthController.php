@@ -52,6 +52,7 @@ class HealthController extends Controller
             'workers' => $this->workerMetrics(),
             'storage' => $this->storageMetrics(),
             'transcoding' => $this->transcodingMetrics(),
+            'callbacks' => $this->callbackMetrics(),
             'runtime' => [
                 'php_version' => PHP_VERSION,
                 'ffmpeg' => $this->binaryMetrics(),
@@ -282,6 +283,29 @@ class HealthController extends Controller
             'failed_videos' => $failed,
             'last_successful_transcoding_at' => DB::table('videos')->whereNotNull('converted_at')->max('converted_at'),
             'error_rate' => $totalFinished > 0 ? round($failed / $totalFinished, 4) : null,
+        ];
+    }
+
+    private function callbackMetrics(): array
+    {
+        if (!Schema::hasTable('vimp_callbacks')) {
+            return [
+                'pending' => 0,
+                'failed' => 0,
+                'sent' => 0,
+                'oldest_unsent_at' => null,
+                'last_sent_at' => null,
+            ];
+        }
+
+        $callbacks = DB::table('vimp_callbacks');
+
+        return [
+            'pending' => (clone $callbacks)->whereIn('status', ['pending', 'queued', 'sending'])->count(),
+            'failed' => (clone $callbacks)->whereIn('status', ['failed', 'preparation_failed'])->count(),
+            'sent' => (clone $callbacks)->where('status', 'sent')->count(),
+            'oldest_unsent_at' => (clone $callbacks)->where('status', '!=', 'sent')->min('created_at'),
+            'last_sent_at' => (clone $callbacks)->where('status', 'sent')->max('sent_at'),
         ];
     }
 

@@ -146,7 +146,7 @@ docker compose --env-file .env -f compose.yaml ps
 For a CPU-only bootstrap or documentation validation, start only non-GPU services:
 
 ```bash
-docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download
+docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download worker-callback
 docker compose --env-file .env -f compose.yaml ps
 ```
 
@@ -172,7 +172,7 @@ Expected:
 
 - Live: HTTP 200 with `status=ok`.
 - Ready: HTTP 200 with `status=ok`.
-- Metrics: JSON with queue, worker, storage, runtime, and transcoding sections.
+- Metrics: JSON with queue, worker, storage, runtime, transcoding, and callback sections.
 
 ## FFmpeg Smoke
 

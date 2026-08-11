@@ -1,6 +1,6 @@
 # Transcoding Webservice
 
-Dockerized Laravel webservice for VIMP-compatible video transcoding with separated download and video queues, FFmpeg smoke tests, health/readiness endpoints, and an internal operations baseline.
+Dockerized Laravel webservice for VIMP-compatible video transcoding with separated download, video, and callback queues, FFmpeg smoke tests, health/readiness endpoints, and an internal operations baseline.
 
 This repository is currently maintained for a **clean install**. There is no existing installation that must be upgraded or data-migrated. The documentation therefore focuses on first installation, bootstrap, staging acceptance, production operation, and recovery.
 
@@ -27,6 +27,7 @@ For a CPU-only bootstrap or documentation review, do not start the GPU worker. F
 - `web`: nginx frontend.
 - `app`: PHP-FPM/Laravel runtime.
 - `worker-download`: queue worker for download jobs.
+- `worker-callback`: isolated queue worker for retryable VIMP callback delivery.
 - `worker-video-gpu`: dedicated PHP 7.4/FFmpeg 6.1.1 queue worker with NVENC, CUDA scaling, startup preflight, and NVIDIA GPU reservation.
 - `scheduler`: Laravel scheduler loop.
 - `redis`: Redis queue/cache service.
@@ -63,6 +64,7 @@ QUEUE_CONNECTION=redis
 QUEUE_REDIS_BLOCK_FOR=5
 REDIS_HOST=redis
 WORKER_DOWNLOAD_NAME=worker-download
+WORKER_CALLBACK_NAME=worker-callback
 WORKER_VIDEO_NAME=worker-video-gpu
 WORKER_VIDEO_RETRY_BACKOFF_SECONDS=30
 GPU_WORKER_PREFLIGHT=true
@@ -92,7 +94,7 @@ docker compose --env-file .env -f compose.yaml up -d
 For a CPU-only bootstrap, skip the GPU worker:
 
 ```bash
-docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download
+docker compose --env-file .env -f compose.yaml up -d app web redis scheduler worker-download worker-callback
 ```
 
 Run database migrations for the fresh database:
@@ -117,6 +119,7 @@ Expected:
 - Ready health returns HTTP 200 and `status=ok`.
 - Metrics returns JSON for queue, worker, storage, runtime, and transcoding signals.
 - Redis queue metrics include immediate and delayed jobs as `waiting` and reserved jobs as `running`.
+- Callback metrics expose pending, failed, and delivered VIMP notifications.
 
 ## FFmpeg Smoke Tests
 
@@ -147,6 +150,15 @@ The existing `/api` contract is protected by feature tests. The key endpoints ar
 | `/api/delete/{mediakey}` | VIMP requests cleanup for a mediakey. |
 
 Do not change API behavior without contract tests and explicit approval.
+
+VIMP callbacks are persisted without API tokens and delivered by `worker-callback`. A VIMP HTTP or transport failure never resets a completed transcode. Inspect or replay callbacks with:
+
+```bash
+docker compose --env-file .env -f compose.yaml exec app \
+  php artisan vimp:callbacks-replay --mediakey=<mediakey> --dry-run
+```
+
+`VIMP_ARTIFACT_BASE_URL`, `VIMP_CALLBACK_LABEL_MAP`, and payload field overrides are compatibility controls. Their defaults preserve the historical upstream callback payload exactly; change them only after a controlled VIMP probe.
 
 ## Documentation
 

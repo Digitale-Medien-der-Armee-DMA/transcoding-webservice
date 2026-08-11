@@ -74,7 +74,9 @@ docker compose --env-file .env -f compose.yaml logs --tail=200 scheduler
 Pruefen:
 
 - `queues.download.waiting` faellt wieder auf 0.
+- `queues.callback.waiting` faellt wieder auf 0.
 - `queues.video.waiting` faellt wieder auf 0.
+- `callbacks.failed` bleibt 0 und `callbacks.sent` steigt.
 - `transcoding.running_jobs` faellt wieder auf 0.
 - `transcoding.failed_jobs` steigt nicht unerwartet.
 - `workers.stale` bleibt 0.

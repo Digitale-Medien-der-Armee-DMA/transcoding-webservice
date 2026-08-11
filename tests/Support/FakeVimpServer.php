@@ -10,12 +10,15 @@ class FakeVimpServer
     private $pipes = [];
     private $port;
     private $logFile;
+    private $configFile;
 
-    public static function start($sourceBody = 'fake-video'): self
+    public static function start($sourceBody = 'fake-video', array $options = []): self
     {
         $server = new self();
         $server->port = self::reservePort();
         $server->logFile = tempnam(sys_get_temp_dir(), 'fake-vimp-requests-');
+        $server->configFile = tempnam(sys_get_temp_dir(), 'fake-vimp-config-');
+        $server->setOptions($options);
 
         $router = realpath(__DIR__ . '/../Fixtures/fake_vimp_server.php');
         $command = sprintf(
@@ -37,6 +40,7 @@ class FakeVimpServer
             array_merge($_ENV, [
                 'FAKE_VIMP_LOG' => $server->logFile,
                 'FAKE_VIMP_SOURCE_BODY' => $sourceBody,
+                'FAKE_VIMP_CONFIG' => $server->configFile,
             ])
         );
 
@@ -47,6 +51,11 @@ class FakeVimpServer
         $server->waitUntilReady();
 
         return $server;
+    }
+
+    public function setOptions(array $options): void
+    {
+        file_put_contents($this->configFile, json_encode($options));
     }
 
     public function url(string $path = ''): string
@@ -89,6 +98,10 @@ class FakeVimpServer
 
         if ($this->logFile && is_file($this->logFile)) {
             unlink($this->logFile);
+        }
+
+        if ($this->configFile && is_file($this->configFile)) {
+            unlink($this->configFile);
         }
     }
 

@@ -11,6 +11,7 @@ Production Compose contains:
 - `app`: PHP-FPM/Laravel runtime.
 - `web`: nginx frontend.
 - `worker-download`: processes the `download` queue.
+- `worker-callback`: delivers persisted VIMP callbacks from the `callback` queue.
 - `worker-video-gpu`: processes the `video` queue and has GPU access.
 - `scheduler`: runs Laravel scheduler every minute.
 - `redis`: Redis queue/cache service.
@@ -32,6 +33,7 @@ Daily or after changes:
 docker compose --env-file .env -f compose.yaml ps
 docker compose --env-file .env -f compose.yaml logs --tail=200 app
 docker compose --env-file .env -f compose.yaml logs --tail=200 worker-download
+docker compose --env-file .env -f compose.yaml logs --tail=200 worker-callback
 docker compose --env-file .env -f compose.yaml logs --tail=200 worker-video-gpu
 ```
 
@@ -47,16 +49,18 @@ Expected behavior:
 
 - `download.waiting` rises briefly after new VIMP jobs.
 - `video.waiting` rises after successful downloads.
+- `callback.waiting` rises after generated artifacts are ready and returns to zero after VIMP accepts the callbacks.
 - Delayed Redis retries remain visible in `waiting`; reserved jobs are visible in `running`.
 - `running_jobs` returns to 0 after completion.
 - `workers.stale` stays at 0.
 
-Video job failures are retried by Laravel with `WORKER_VIDEO_RETRY_BACKOFF_SECONDS`. The original exception is preserved in `failed_jobs`. The first terminal failure marks the complete download as failed and sends one VIMP error callback; remaining sibling jobs then exit without starting FFmpeg.
+Video job failures are retried by Laravel with `WORKER_VIDEO_RETRY_BACKOFF_SECONDS`. The original exception is preserved in `failed_jobs`. The first terminal failure marks the complete download as failed and queues one VIMP error callback; remaining sibling jobs then exit without starting FFmpeg. Callback failures are retried separately and never restart FFmpeg or change a successfully converted video.
 
 Backlog interpretation:
 
 - Download backlog usually points to VIMP source access, network, storage, DB, or Redis.
 - Video backlog usually points to GPU/FFmpeg, profiles, storage, or VRAM pressure.
+- Callback backlog usually points to VIMP routing, mediakey/label validation, artifact URL reachability, or network/TLS failures.
 - Running jobs without progress usually point to stuck workers or long FFmpeg processes.
 
 ## Scheduler
@@ -82,6 +86,7 @@ Specific services:
 ```bash
 docker compose --env-file .env -f compose.yaml logs --tail=200 scheduler
 docker compose --env-file .env -f compose.yaml logs --tail=200 worker-download
+docker compose --env-file .env -f compose.yaml logs --tail=200 worker-callback
 docker compose --env-file .env -f compose.yaml logs --tail=200 worker-video-gpu
 ```
 
@@ -108,6 +113,24 @@ docker compose --env-file .env -f compose.yaml restart
 ```
 
 Before restarting workers, check whether jobs are active. A worker restart can interrupt long transcodes.
+
+## VIMP Callback Recovery
+
+Inspect persisted callbacks without sending anything:
+
+```bash
+docker compose --env-file .env -f compose.yaml exec app \
+  php artisan vimp:callbacks-replay --mediakey=<mediakey> --dry-run
+```
+
+Replay failed or pending callbacks:
+
+```bash
+docker compose --env-file .env -f compose.yaml exec app \
+  php artisan vimp:callbacks-replay --mediakey=<mediakey>
+```
+
+Use `--rebuild` only when a converted artifact exists but payload preparation failed. Use `--force` only for an intentionally repeated callback that is already marked `sent`.
 
 ## Storage
 
