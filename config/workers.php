@@ -3,6 +3,7 @@
 return [
     'queues' => [
         'download' => env('WORKER_DOWNLOAD_QUEUE', 'download'),
+        'callback' => env('WORKER_CALLBACK_QUEUE', 'callback'),
         'video' => env('WORKER_VIDEO_QUEUE', 'video'),
     ],
 

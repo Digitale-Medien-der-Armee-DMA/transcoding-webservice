@@ -13,6 +13,7 @@ return [
     ],
     'queue_names' => [
         'download',
+        'callback',
         'video',
         'default',
     ],

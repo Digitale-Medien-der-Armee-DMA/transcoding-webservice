@@ -84,6 +84,41 @@ services:
     networks:
       - internal
 
+  worker-callback:
+    image: transcoding-webservice-app:${APP_IMAGE_TAG:-local}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      WAIT_FOR_DB: "true"
+      WAIT_FOR_REDIS: "${HEALTH_REDIS_REQUIRED:-false}"
+      WORKER_NAME: "${WORKER_CALLBACK_NAME:-worker-callback}"
+      WORKER_ROLE: callback
+    command:
+      - php
+      - artisan
+      - queue:work
+      - --queue=${WORKER_CALLBACK_QUEUE:-callback}
+      - --sleep=${WORKER_CALLBACK_SLEEP:-3}
+      - --tries=${WORKER_CALLBACK_TRIES:-8}
+      - --timeout=${WORKER_CALLBACK_TIMEOUT:-180}
+      - --memory=${WORKER_CALLBACK_MEMORY:-256}
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - app-storage:/var/www/html/storage
+      - app-cache:/var/www/html/bootstrap/cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "php", "artisan", "--version"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - internal
+
   worker-video-gpu:
     image: transcoding-webservice-worker-gpu:${APP_IMAGE_TAG:-local}
     build:

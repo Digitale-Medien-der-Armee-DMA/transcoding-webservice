@@ -58,15 +58,17 @@ This checklist is the Go/No-Go gate for a clean-install production acceptance. I
 - [ ] Release-specific bootstrap/seed steps are completed, if any.
 - [ ] `/internal/health/live` is `ok`.
 - [ ] `/internal/health/ready` is `ok`.
-- [ ] `/internal/metrics` returns DB, queue, worker, storage, and FFmpeg values.
+- [ ] `/internal/metrics` returns DB, queue, worker, storage, FFmpeg, and callback values.
 - [ ] Workers and scheduler are running.
-- [ ] Download and video queue names match the environment.
+- [ ] Download, video, and callback queue names match the environment.
 
 ## VIMP Staging
 
 - [ ] VIMP staging user and API token are configured.
 - [ ] Test transcode succeeds.
 - [ ] Callback arrives in VIMP staging.
+- [ ] A forced callback 404 is persisted and can be replayed without another encode.
+- [ ] `finished=true` is sent once after all artifact downloads are acknowledged.
 - [ ] Status endpoint returns the expected status.
 - [ ] Finished endpoint marks only the expected generated file.
 - [ ] Delete flow removes only the expected test mediakey.
