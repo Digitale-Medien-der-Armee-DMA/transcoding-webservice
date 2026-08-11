@@ -38,7 +38,7 @@ docker compose --env-file .env -f compose.yaml logs --tail=200 worker-video-gpu
 On NVIDIA hosts:
 
 ```bash
-nvidia-smi
+nvidia-smi --query-gpu=timestamp,name,utilization.gpu,utilization.encoder,utilization.decoder,memory.used,memory.free,power.draw --format=csv
 ```
 
 ## Queue Operation
@@ -130,6 +130,17 @@ Do not delete files manually without mediakey and VIMP coordination. Prefer test
 ## GPU Operation
 
 `worker-video-gpu` is the only production service with GPU reservation.
+
+It uses a dedicated FFmpeg 6.1.1 image. Startup and health checks require `nvidia-smi`, `h264_nvenc`, CUDA acceleration, and `scale_cuda`. Confirm the effective runtime in `/internal/metrics` at `workers.gpu_worker`; production expects `status=ok`, encoder `h264_nvenc`, and filter `scale_cuda`.
+
+Confirm a live encode with:
+
+```bash
+docker compose --env-file .env -f compose.yaml exec worker-video-gpu \
+  sh -lc 'ps -eo pid,etime,%cpu,%mem,args | grep "[f]fmpeg"'
+```
+
+The command must use `-vcodec h264_nvenc`. A command containing `libx264` is the CPU profile or the configured fallback.
 
 GPU guard defaults:
 

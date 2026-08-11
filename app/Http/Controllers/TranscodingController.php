@@ -7,9 +7,10 @@ use App\Format\Video\H264;
 use App\Models\Download;
 use App\Models\Profile;
 use App\Models\Video;
-use App\Models\Worker;
 use App\Models\User;
 use App\Services\Security\MediaPathGuard;
+use App\Services\VideoFilterGraph;
+use App\Services\WorkerHeartbeat;
 use Carbon\Carbon;
 use Exception;
 use FFMpeg\Filters\Frame\CustomFrameFilter;
@@ -51,29 +52,7 @@ class TranscodingController extends Controller
         $this->attempts = $attempts;
         $this->user = User::find($this->video->user_id);
         $this->profile = $this->user->profile;
-        $this->worker = gethostname();
-    }
-
-    public function updateWorkerStatus()
-    {
-        Log::debug("Entering " . __METHOD__);
-        try {
-            Cache::lock('worker-' . $this->worker)->get(function () {
-                $date = Carbon::now();
-                Worker::updateOrCreate([
-                    'host' => $this->worker
-                ],[
-                    'last_seen_at' => $date,
-                    'description' => gethostbyname($this->worker)
-                ]);
-            });
-
-        }
-        catch(Throwable $exception)
-        {
-		Log::debug("Failed to update or create worker $this->worker: " . $exception->getMessage());
-        }
-	Log::debug("Exiting " . __METHOD__);
+        $this->worker = config('workers.heartbeat.name') ?: gethostname();
     }
 
     public function updateProgress($percentage)
@@ -100,7 +79,7 @@ class TranscodingController extends Controller
         $pid = $this->pid = getmypid();
 
 	$start = now();
-        $this->updateWorkerStatus();
+        app(WorkerHeartbeat::class)->touch(config('workers.queues.video'), $this->video->title);
         $this->video->update([
             'processed' => Video::PROCESSING,
             'file' => $this->getTargetFileName(),
@@ -570,31 +549,15 @@ class TranscodingController extends Controller
 
     private function applyFilters($video)
     {
-        $w = $this->dimension->getWidth();
-        $h = $this->dimension->getHeight();
-        switch ($this->profile->encoder) {
-            case 'h264_vaapi':
-            {
-                $scale_vaapi = 'scale_vaapi=w=\'if(gt(a\,'.$w.'/'.$h.')\,'.$w.'\,oh*a)\':h=\'if(gt(a\,'.$w.'/'.$h.')\,ow/a\,'.$h.')\'';
-                $video->filters()->custom($scale_vaapi)->synchronize();
-                return $video;
-            }
+        $filter = app(VideoFilterGraph::class)->forEncoder(
+            $this->profile->encoder,
+            $this->dimension->getWidth(),
+            $this->dimension->getHeight()
+        );
 
-            case 'h264_nvenc':
-            {
-                $scale_nvenc = 'hwupload,scale_npp=w='.$w.':h='.$h.':force_original_aspect_ratio=decrease:force_divisible_by=4:interp_algo=super';
-                //$scale_nvenc = 'scale_npp=w=\'if(gt(a\,'.$w.'/'.$h.')\,'.$w.'\,oh*a)\':h=\'if(gt(a\,'.$w.'/'.$h.')\,ow/a\,'.$h.')\':interp_algo=super';
-                $video->filters()->custom($scale_nvenc)->synchronize();
-                return $video;
-            }
+        $video->filters()->custom($filter)->synchronize();
 
-            default:
-            {
-                $scale_default = 'scale=w='.$w.':h='.$h.':force_original_aspect_ratio=decrease,crop=\'iw-mod(iw\,2)\':\'ih-mod(ih\,2)\'';
-                $video->filters()->custom($scale_default)->synchronize();
-                return $video;
-            }
-        }
+        return $video;
     }
 
     private function prepare()

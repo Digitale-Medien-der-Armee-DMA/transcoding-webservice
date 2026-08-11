@@ -40,6 +40,11 @@ This checklist is the Go/No-Go gate for a clean-install production acceptance. I
 
 - [ ] CPU FFmpeg smoke passed.
 - [ ] GPU FFmpeg smoke passed on the target host if GPU production is planned.
+- [ ] GPU smoke ran against `transcoding-webservice-worker-gpu`, not a separate diagnostic image.
+- [ ] `/internal/metrics` reports `workers.gpu_worker.status=ok`, FFmpeg 6.1.1, `h264_nvenc`, and `scale_cuda`.
+- [ ] Live FFmpeg command contains `-vcodec h264_nvenc` and NVIDIA encoder utilization rises above zero.
+- [ ] GPU MP4 and HLS outputs pass `ffprobe` and VIMP callback validation.
+- [ ] Controlled NVENC failure reaches the `libx264` fallback.
 - [ ] NVIDIA driver version is documented.
 - [ ] NVIDIA Container Toolkit works.
 - [ ] `GPU_GUARD_ENABLED` decision is documented.

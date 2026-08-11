@@ -44,10 +44,21 @@ class WorkerHeartbeat
 
     private function description(?string $queue, ?string $job): string
     {
-        return json_encode([
+        $description = [
             'ip' => gethostbyname(gethostname() ?: 'localhost'),
             'queue' => $queue,
             'job' => $job,
-        ]);
+            'role' => config('workers.runtime.role'),
+        ];
+
+        if ($description['role'] === 'gpu-video') {
+            $description['runtime'] = [
+                'ffmpeg_version' => config('workers.runtime.ffmpeg_version'),
+                'video_encoder' => config('workers.runtime.video_encoder'),
+                'video_filter' => config('workers.runtime.video_filter'),
+            ];
+        }
+
+        return json_encode($description);
     }
 }

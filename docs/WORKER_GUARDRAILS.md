@@ -52,10 +52,11 @@ WORKER_VIDEO_NAME=worker-video-gpu
 Gespeichert werden:
 
 - `host`
-- `description` mit IP, Queue und Job-Klasse
+- `description` mit IP, Queue, Job-Klasse und Worker-Rolle
 - `last_seen_at`
 
 Die bestehenden Health-/Metrics-Endpunkte nutzen `HEALTH_WORKER_STALE_AFTER_SECONDS`, um stale Worker zu zaehlen.
+Der GPU-Worker meldet zusaetzlich seine validierte FFmpeg-Version, den Encoder und den CUDA-Filter. Transcoding-Jobs erzeugen keine zusaetzlichen Heartbeats unter zufaelligen Container-Hostnamen mehr; Queue-Events und Queue-Loop aktualisieren ausschliesslich den stabilen `WORKER_NAME`.
 
 ## GPU Free Memory Guard
 

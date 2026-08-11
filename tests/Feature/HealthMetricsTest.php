@@ -29,6 +29,7 @@ class HealthMetricsTest extends TestCase
             'health.queue_names' => ['download', 'video', 'default'],
             'queue.default' => 'database',
             'workers.heartbeat.enabled' => true,
+            'workers.gpu_worker.name' => 'worker-video-gpu',
             'workers.gpu_guard.enabled' => false,
             'workers.gpu_guard.min_free_mb' => 12288,
             'workers.gpu_guard.retry_delay_seconds' => 60,
@@ -204,6 +205,12 @@ class HealthMetricsTest extends TestCase
                         'min_free_mb' => 12288,
                         'retry_delay_seconds' => 60,
                         'fail_open' => false,
+                    ],
+                    'gpu_worker' => [
+                        'name' => 'worker-video-gpu',
+                        'status' => 'missing',
+                        'last_seen_at' => null,
+                        'runtime' => null,
                     ],
                 ],
                 'transcoding' => [

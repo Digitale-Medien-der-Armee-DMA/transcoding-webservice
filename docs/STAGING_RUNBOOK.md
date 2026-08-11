@@ -89,7 +89,7 @@ GPU smoke on an NVIDIA staging host:
 docker compose --env-file .env --profile gpu-smoke -f compose.yaml run --rm ffmpeg-smoke-gpu
 ```
 
-The GPU smoke test passes only if `nvidia-smi`, NVENC encoding, and CUDA decode succeed. A failing GPU smoke blocks GPU production use even when PHP tests are green.
+The GPU smoke runs the production GPU-worker image. It passes only if `nvidia-smi`, NVENC MP4/HLS encoding, CUDA decode, `scale_cuda`, AAC audio, and `ffprobe` output validation succeed. A failing GPU smoke blocks GPU production use even when PHP tests are green.
 
 ## VIMP Staging Flow
 
@@ -120,6 +120,7 @@ Record at least:
 - Download duration and file size.
 - CPU, RAM, and disk usage.
 - GPU utilization, encoder utilization, and free VRAM.
+- Effective FFmpeg command (`h264_nvenc` for GPU acceptance, not `libx264`).
 - Laravel log errors and container restarts.
 
 GPU query:

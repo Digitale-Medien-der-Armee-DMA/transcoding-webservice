@@ -11,6 +11,17 @@ return [
         'name' => env('WORKER_NAME'),
     ],
 
+    'gpu_worker' => [
+        'name' => env('WORKER_VIDEO_NAME', 'worker-video-gpu'),
+    ],
+
+    'runtime' => [
+        'role' => env('WORKER_ROLE'),
+        'ffmpeg_version' => env('GPU_FFMPEG_VERSION'),
+        'video_encoder' => env('GPU_VIDEO_ENCODER'),
+        'video_filter' => env('GPU_VIDEO_FILTER'),
+    ],
+
     'video_retry_backoff_seconds' => env('WORKER_VIDEO_RETRY_BACKOFF_SECONDS', 30),
 
     'gpu_guard' => [

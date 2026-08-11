@@ -12,7 +12,8 @@ Root-Dateien:
 
 - `compose.yaml`: Production-orientierter Stack ohne produktive Datenbank.
 - `compose.dev.yaml`: Dev-/Staging-Override mit lokaler MariaDB.
-- `docker/production/Dockerfile.app`: PHP-FPM/Laravel Runtime und Worker-Image.
+- `docker/production/Dockerfile.app`: PHP-FPM/Laravel runtime and CPU worker image.
+- `docker/production/Dockerfile.worker-gpu`: PHP CLI/Laravel worker with pinned FFmpeg 6.1.1, NVENC, and `scale_cuda`.
 - `docker/production/Dockerfile.nginx`: nginx Web-Frontend.
 - `docker/production/Dockerfile.ffmpeg-smoke`: gepinnte CUDA/Ubuntu-24.04-FFmpeg-Smoke-Runtime.
 - `docker/production/app-entrypoint.sh`: Runtime-Verzeichnis-Setup und optionale DB-/Redis-Wartephase.
@@ -66,7 +67,7 @@ make migrate
 - `NVIDIA_DRIVER_CAPABILITIES=compute,utility,video`
 - `GPU_DEVICE_COUNT`
 
-Der FFmpeg-Smoke-Pfad ist in `docs/FFMPEG_NVIDIA.md` dokumentiert. Die Smoke-Runtime nutzt ein gepinntes offizielles NVIDIA-CUDA-Ubuntu-24.04-Image und prueft CPU-Encoding, NVENC-Encoding sowie CUDA-Decode auf dem Zielhost. Das Laravel-App-Image bleibt in dieser Uebergangsstufe auf der PHP-7.4-Basis aus PR 3.
+The GPU smoke path is documented in `docs/FFMPEG_NVIDIA.md`. It now uses the exact production GPU-worker image and validates NVENC MP4/HLS output, CUDA decode, and `scale_cuda` on the target host. The general Laravel app image remains CPU-only and does not receive GPU access.
 
 ## Volumes
 

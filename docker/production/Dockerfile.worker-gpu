@@ -1,0 +1,119 @@
+ARG PHP_IMAGE=php:7.4-cli-bullseye
+
+FROM ${PHP_IMAGE} AS ffmpeg-build
+
+ARG FFMPEG_VERSION=6.1.1
+ARG FFMPEG_SHA256=8684f4b00f94b85461884c3719382f1261f0d9eb3d59640a1f4ac0873616f968
+ARG NV_CODEC_HEADERS_VERSION=12.1.14.0
+ARG NV_CODEC_HEADERS_SHA256=2fefaa227d2a3b4170797796425a59d1dd2ed5fd231db9b4244468ba327acd0b
+
+SHELL ["/bin/sh", "-euxc"]
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        clang \
+        curl \
+        libx264-dev \
+        make \
+        nasm \
+        pkg-config \
+        xz-utils \
+        yasm \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tmp/build
+
+RUN curl -fsSLo nv-codec-headers.tar.gz \
+        "https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n${NV_CODEC_HEADERS_VERSION}.tar.gz" \
+    && echo "${NV_CODEC_HEADERS_SHA256}  nv-codec-headers.tar.gz" | sha256sum -c - \
+    && mkdir nv-codec-headers \
+    && tar -xzf nv-codec-headers.tar.gz --strip-components=1 -C nv-codec-headers \
+    && make -C nv-codec-headers install PREFIX=/usr/local
+
+RUN curl -fsSLo ffmpeg.tar.xz "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" \
+    && echo "${FFMPEG_SHA256}  ffmpeg.tar.xz" | sha256sum -c - \
+    && tar -xJf ffmpeg.tar.xz \
+    && cd "ffmpeg-${FFMPEG_VERSION}" \
+    && ./configure \
+        --prefix=/opt/ffmpeg \
+        --disable-debug \
+        --disable-doc \
+        --disable-ffplay \
+        --enable-cuda-llvm \
+        --enable-cuvid \
+        --enable-ffnvcodec \
+        --enable-gpl \
+        --enable-libx264 \
+        --enable-nvdec \
+        --enable-nvenc \
+        --nvccflags="--cuda-gpu-arch=sm_75 -O2" \
+    && make -j"$(nproc)" \
+    && make install \
+    && /opt/ffmpeg/bin/ffmpeg -hide_banner -encoders 2>/dev/null | grep -q h264_nvenc \
+    && /opt/ffmpeg/bin/ffmpeg -hide_banner -filters 2>/dev/null | grep -q scale_cuda
+
+FROM ${PHP_IMAGE} AS runtime
+
+ARG APP_UID=1000
+ARG APP_GID=1000
+ARG FFMPEG_VERSION=6.1.1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        default-mysql-client \
+        git \
+        libfreetype6-dev \
+        libicu-dev \
+        libjpeg62-turbo-dev \
+        libpng-dev \
+        libx264-160 \
+        libzip-dev \
+        procps \
+        unzip \
+        zip \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" gd intl opcache pdo_mysql zip \
+    && pecl install redis-6.0.2 \
+    && docker-php-ext-enable redis \
+    && groupadd --gid "${APP_GID}" app \
+    && useradd --uid "${APP_UID}" --gid app --home-dir /var/www/html --shell /bin/bash app \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2.2 /usr/bin/composer /usr/bin/composer
+COPY --from=ffmpeg-build /opt/ffmpeg /opt/ffmpeg
+
+ENV PATH="/opt/ffmpeg/bin:${PATH}" \
+    GPU_FFMPEG_VERSION="${FFMPEG_VERSION}" \
+    GPU_VIDEO_ENCODER=h264_nvenc \
+    GPU_VIDEO_FILTER=scale_cuda \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+
+WORKDIR /var/www/html
+
+COPY --chown=app:app . .
+COPY docker/production/app-entrypoint.sh /usr/local/bin/app-entrypoint
+COPY docker/production/gpu-worker-entrypoint.sh /usr/local/bin/gpu-worker-entrypoint
+COPY scripts/runtime/gpu-worker-preflight.sh /usr/local/bin/gpu-worker-preflight
+COPY docker/production/ffmpeg-smoke.sh /usr/local/bin/ffmpeg-smoke
+COPY scripts/smoke/ffmpeg-gpu-smoke.sh /usr/local/bin/ffmpeg-gpu-smoke
+
+RUN chmod +x \
+        /usr/local/bin/app-entrypoint \
+        /usr/local/bin/gpu-worker-entrypoint \
+        /usr/local/bin/gpu-worker-preflight \
+        /usr/local/bin/ffmpeg-smoke \
+        /usr/local/bin/ffmpeg-gpu-smoke \
+    && mkdir -p storage/app/public/uploaded storage/app/public/converted storage/framework/cache/data storage/framework/sessions storage/framework/testing storage/framework/views bootstrap/cache \
+    && rm -f bootstrap/cache/*.php \
+    && composer install --no-dev --prefer-dist --no-interaction --no-progress --no-scripts \
+    && php artisan package:discover --ansi \
+    && ffmpeg -hide_banner -version | grep -q "ffmpeg version ${FFMPEG_VERSION}" \
+    && php -r 'exit(extension_loaded("redis") && phpversion("redis") === "6.0.2" ? 0 : 1);' \
+    && chown -R app:app storage bootstrap/cache
+
+USER app
+
+ENTRYPOINT ["gpu-worker-entrypoint"]
+CMD ["php", "artisan", "queue:work", "--queue=video"]
